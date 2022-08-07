@@ -72,7 +72,7 @@ flags.DEFINE_integer('num_actors_with_summaries', 4,
 flags.DEFINE_bool('render', False,
                   'Whether the first actor should render the environment.')
 flags.DEFINE_integer('save_interval', int(1e5), 'save interval')
-flags.DEFINE_integer('save_num', 100, 'save num')
+flags.DEFINE_integer('save_num', 20, 'save num')
 
 
 def are_summaries_enabled():
