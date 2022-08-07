@@ -235,6 +235,10 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
         loss, logs = compute_loss(logger, parametric_action_distribution, agent,
                                   *args)
       grads = tape.gradient(loss, agent.trainable_variables)
+      gradient_norm_before_clip = tf.linalg.global_norm(grads)
+      if FLAGS.clip_norm:
+        grads, _ = tf.clip_by_global_norm(
+            grads, FLAGS.clip_norm, use_norm=gradient_norm_before_clip)
       for t, g in zip(temp_grads, grads):
         t.assign(g)
       return loss, logs

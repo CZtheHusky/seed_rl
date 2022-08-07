@@ -33,8 +33,8 @@ import os
 FLAGS = flags.FLAGS
 
 # Optimizer settings.
-flags.DEFINE_float('learning_rate', 0.00031866995608948655, 'Learning rate.')
-flags.DEFINE_float('adam_epsilon', .0000003125, 'Adam epsilon.')
+flags.DEFINE_float('learning_rate', 0.000398313170083425, 'Learning rate.')
+flags.DEFINE_float('adam_epsilon', .00000000003125, 'Adam epsilon.')
 flags.DEFINE_float('rms_epsilon', .1, 'RMS epsilon.')
 flags.DEFINE_float('rms_momentum', 0., 'RMS momentum.')
 flags.DEFINE_float('rms_decay', .99, 'RMS decay.')
@@ -57,7 +57,7 @@ flags.DEFINE_string('init_checkpoint', None,
                     'Path to the checkpoint used to initialize the agent.')
 
 # Loss settings.
-flags.DEFINE_float('entropy_cost', 0.0033391318945337044, 'Entropy cost/multiplier.')
+flags.DEFINE_float('entropy_cost', 0.0013043623417080615, 'Entropy cost/multiplier.')
 flags.DEFINE_float('target_entropy', None, 'If not None, the entropy cost is '
                    'automatically adjusted to reach the desired entropy level.')
 flags.DEFINE_float('entropy_cost_adjustment_speed', 10., 'Controls how fast '
@@ -69,6 +69,7 @@ flags.DEFINE_float('lambda_', .95, 'Lambda.')
 flags.DEFINE_float('max_abs_reward', 0.,
                    'Maximum absolute reward when calculating loss.'
                    'Use 0. to disable clipping.')
+flags.DEFINE_float('clip_norm', 40, 'We clip gradient norm to this value.')
 
 # Logging
 flags.DEFINE_integer('log_batch_frequency', 100, 'We average that many batches '
