@@ -431,9 +431,9 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
           env_infos.add(env_ids, (0, env_outputs.reward, raw_rewards))
           done_ids = tf.gather(env_ids, tf.where(env_outputs.done)[:, 0])
           # dumpDones(trajBuffer, traj2Save, done_ids, num_tasks, eps_count, trans_count)
-          # if i == 0:
-          done_episodes_info = env_infos.read(done_ids)
-          info_queue.enqueue_many(EpisodeInfo(*(done_episodes_info + (done_ids,))))
+          if i == 0:
+            done_episodes_info = env_infos.read(done_ids)
+            info_queue.enqueue_many(EpisodeInfo(*(done_episodes_info + (done_ids,))))
           # if i == 0:
           #   info_queue.enqueue_many(env_infos.read(done_ids))
           env_infos.reset(done_ids)
@@ -511,7 +511,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
   def additional_logs():
     n_episodes = info_queue.size()
-    n_episodes -= n_episodes % 100
+    n_episodes -= n_episodes % 10
     if tf.not_equal(n_episodes, 0):
       episode_stats = info_queue.dequeue_many(n_episodes)
       # episode_keys = [
