@@ -79,4 +79,7 @@ def main(argv):
 
 
 if __name__ == '__main__':
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  if gpus:
+      tf.config.experimental.set_memory_growth(gpus[0], True)
   app.run(main)

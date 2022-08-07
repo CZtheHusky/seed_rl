@@ -72,7 +72,7 @@ flags.DEFINE_integer('num_actors_with_summaries', 4,
 flags.DEFINE_bool('render', False,
                   'Whether the first actor should render the environment.')
 flags.DEFINE_integer('save_interval', int(1e5), 'save interval')
-flags.DEFINE_integer('save_num', 500, 'save num')
+flags.DEFINE_integer('save_num', 1000, 'save num')
 
 
 def are_summaries_enabled():
@@ -88,7 +88,7 @@ def actor_loop(create_env_fn, config=None, log_period=30):
     config: Configuration of the training.
     log_period: How often to log in seconds.
   """
-  FLAGS.reward_threshold = 30
+  # FLAGS.reward_threshold = 30
   if not config:
     config = FLAGS
   save_idx = 0
@@ -121,7 +121,7 @@ def actor_loop(create_env_fn, config=None, log_period=30):
   actor_step = 0
   pid = os.getpid()
   with summary_writer.as_default():
-    while True:
+    while save_idx <= FLAGS.save_num:
       try:
         # Client to communicate with the learner.
         client = grpc.Client(FLAGS.server_address)
@@ -152,7 +152,7 @@ def actor_loop(create_env_fn, config=None, log_period=30):
         elapsed_inference_s_timer = timer_cls('actor/elapsed_inference_s', 1000)
         last_log_time = timeit.default_timer()
         last_global_step = 0
-        while True:
+        while save_idx <= FLAGS.save_num:
           for i in range(env_batch_size):
             obsBuffer[i].append(observation[i])
           tf.summary.experimental.set_step(actor_step)
@@ -163,6 +163,7 @@ def actor_loop(create_env_fn, config=None, log_period=30):
           np_action = action.numpy()
           with timer_cls('actor/elapsed_env_step_s', 1000):
             observation, reward, done, info = batched_env.step(np_action)
+            # print('step')
           # if is_rendering_enabled:
           #   batched_env.render()
           for i in range(env_batch_size):
@@ -201,19 +202,19 @@ def actor_loop(create_env_fn, config=None, log_period=30):
                 reward[i] = 0.0
                 raw_reward[i] = 0.0
               # append_data(data, obs, act, rew, infos, done)
-              if episode_raw_return[i] >= FLAGS.reward_threshold:
-                cur_trans_num += episode_step[i]
-                cur_ep_num += 1
-                avg_ep_reward += episode_raw_return[i]
-                append_data(data2save, obsBuffer[i], actionsBuffer[i], rewardBuffer[i], infosBuffer[i], terminalBuffer[i])
-                logging.info(f'pid: {pid} adding data, save idx: {save_idx} env idx: {actor_idx} cur transitions: {cur_trans_num}  cur episodes: {cur_ep_num} tt transitions: {total_transitions}')
+              # if episode_raw_return[i] >= FLAGS.reward_threshold:
+              cur_trans_num += episode_step[i]
+              cur_ep_num += 1
+              avg_ep_reward += episode_raw_return[i]
+              append_data(data2save, obsBuffer[i], actionsBuffer[i], rewardBuffer[i], infosBuffer[i], terminalBuffer[i])
+              logging.info(f'pid: {pid} adding data, env idx: {actor_idx} cur transitions: {cur_trans_num}  cur episodes: {cur_ep_num} avg ep rew: {avg_ep_reward / cur_ep_num}')
               if cur_trans_num >= FLAGS.save_interval:
                 total_transitions += cur_trans_num
                 total_eps += cur_ep_num
-                logging.info(f'pid: {pid} saving data, save idx: {save_idx} env idx: {actor_idx} cur transitions: {cur_trans_num}  cur episodes: {cur_ep_num} tt transitions: {total_transitions}')
-                dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
+                logging.info(f'pid: {pid} saving data, save idx: {save_idx} env idx: {actor_idx} cur transitions: {cur_trans_num}  cur episodes: {cur_ep_num} avg ep rew: {avg_ep_reward / cur_ep_num}')
+                logging.info(f'pid: {pid}  tt transitions: {total_transitions} tt eps: {total_eps}')
+                dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx % FLAGS.save_num) + '.hdf5', 'w')
                 save_idx += 1
-                save_idx %= FLAGS.save_num
                 cur_trans_num = 0
                 cur_ep_num = 0
                 npify(data2save)
@@ -248,7 +249,11 @@ def actor_loop(create_env_fn, config=None, log_period=30):
               episode_step[i] = 0
               episode_return[i] = 0
               episode_raw_return[i] = 0
-
+              obsBuffer[i].clear()
+              actionsBuffer[i].clear()
+              rewardBuffer[i].clear()
+              terminalBuffer[i].clear()
+              infosBuffer[i].clear()
           # Finally, we reset the episode which will report the transition
           # from the terminal state to the resetted state in the next loop
           # iteration (with zero rewards).
@@ -257,10 +262,10 @@ def actor_loop(create_env_fn, config=None, log_period=30):
 
           # if is_rendering_enabled and done[0]:
           #   batched_env.render()
-
           actor_step += 1
       except (tf.errors.UnavailableError, tf.errors.CancelledError):
-        logging.info(f'pid: {pid} saving data, save idx: {save_idx} env idx: {actor_idx} cur transitions: {cur_trans_num}  cur episodes: {cur_ep_num} tt transitions: {total_transitions}')
+        logging.info(f'pid: {pid} saving data, save idx: {save_idx} env idx: {actor_idx} cur transitions: {cur_trans_num}  cur episodes: {cur_ep_num} avg ep rew: {avg_ep_reward / cur_ep_num}')
+        logging.info(f'pid: {pid} tt transitions: {total_transitions} tt eps: {total_eps}')
         dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
         npify(data2save)
         for k in data2save:
