@@ -73,7 +73,7 @@ flags.DEFINE_float('max_abs_reward', 0.,
 # Logging
 flags.DEFINE_integer('log_batch_frequency', 100, 'We average that many batches '
                      'before logging batch statistics like entropy.')
-flags.DEFINE_integer('log_episode_frequency', 100, 'We average that many episodes'
+flags.DEFINE_integer('log_episode_frequency', 500, 'We average that many episodes'
                      ' before logging average episode return and length.')
 
 def create_agent(action_space, unused_env_observation_space,

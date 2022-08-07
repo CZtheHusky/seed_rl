@@ -35,14 +35,15 @@ FLAGS = flags.FLAGS
 # Optimizer settings.
 flags.DEFINE_float('learning_rate', 1e-4, 'Learning rate.')
 flags.DEFINE_float('adam_epsilon', 1e-3, 'Adam epsilon.')
-flags.DEFINE_string('sub_task', 'all', 'sub tasks')
 flags.DEFINE_list('task_names', [], 'names of tasks')
 flags.DEFINE_float('reward_threshold', 0., 'reward threshold for sampling')
 flags.DEFINE_string('sub_task', 'all', 'sub tasks, i.e. dmlab30, dmlab26, all, others')
+flags.DEFINE_string('init_checkpoint', None,
+                    'Path to the checkpoint used to initialize the agent.')
 
 flags.DEFINE_integer('save_checkpoint_secs', 900,
                      'Checkpoint save period in seconds.')
-flags.DEFINE_integer('total_environment_frames', int(6e8),
+flags.DEFINE_integer('total_environment_frames', int(1e9),
                      'Total environment frames to train for.')
 flags.DEFINE_integer('batch_size', 64, 'Batch size for training.')
 flags.DEFINE_float('replay_ratio', 1.5,
@@ -50,7 +51,7 @@ flags.DEFINE_float('replay_ratio', 1.5,
                    'used for training. '
                    'The default of 1.5 corresponds to an interpretation of the '
                    'R2D2 paper using the end of section 2.3.')
-flags.DEFINE_integer('inference_batch_size', 64,
+flags.DEFINE_integer('inference_batch_size', 256,
                      'Batch size for inference, -1 for auto-tune.')
 flags.DEFINE_integer('unroll_length', 100, 'Unroll length in agent steps.')
 flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')
