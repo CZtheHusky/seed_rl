@@ -45,9 +45,9 @@ def create_agent(env_output_specs, num_actions):
 
 
 def create_optimizer(final_iteration):
-  learning_rate_fn = lambda iteration: FLAGS.learning_rate
-  # learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
-  #   FLAGS.learning_rate, final_iteration, 0)
+  # learning_rate_fn = lambda iteration: FLAGS.learning_rate
+  learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
+    FLAGS.learning_rate, final_iteration, 0)
   optimizer = tf.keras.optimizers.Adam(FLAGS.learning_rate,
                                        epsilon=FLAGS.adam_epsilon)
   return optimizer, learning_rate_fn
@@ -79,4 +79,7 @@ def main(argv):
 
 
 if __name__ == '__main__':
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  if gpus:
+      tf.config.experimental.set_memory_growth(gpus[0], True)
   app.run(main)

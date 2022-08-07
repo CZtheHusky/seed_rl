@@ -219,17 +219,18 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
       and must return a tf.keras.optimizers.Optimizer and a
       tf.keras.optimizers.schedules.LearningRateSchedule.
   """
-  task_set = FLAGS.task_names
-  num_tasks = len(task_set)
-  trajBuffer = createDataset(FLAGS.num_envs)
-  traj2Save = createDataset(num_tasks)
-  traj2SaveIdx = [0 for i in range(num_tasks)]
-  traj2SaveEps = [0 for i in range(num_tasks)]
-  traj2SaveTrans = [0 for i in range(num_tasks)]
-  trans_count = [0 for i in range(num_tasks)]
-  eps_count = [0 for i in range(num_tasks)]
-  maxSave = 500
-  dataSaveInterval = int(1e6)
+  # task_set = FLAGS.task_names
+  # num_tasks = len(task_set)
+  # trajBuffer = createDataset(FLAGS.num_envs)
+  # traj2Save = createDataset(num_tasks)
+  # traj2SaveIdx = [0 for i in range(num_tasks)]
+  # traj2SaveEps = [0 for i in range(num_tasks)]
+  # traj2SaveTrans = [0 for i in range(num_tasks)]
+  # trans_count = [0 for i in range(num_tasks)]
+  # eps_count = [0 for i in range(num_tasks)]
+  # maxSave = 500
+  # dataSaveInterval = int(1e6)
+  total_frames = 0
   logging.info('Starting learner loop')
   validate_config()
   settings = utils.init_learner_multi_host(FLAGS.num_training_tpus)
@@ -257,7 +258,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
   initial_agent_state = agent.initial_state(1)
   agent_state_specs = tf.nest.map_structure(
       lambda t: tf.TensorSpec(t.shape[1:], t.dtype), initial_agent_state)
-  unroll_specs = [None]  # Lazy initialization.
+  # unroll_specs = [None]  # Lazy initialization.
   input_ = tf.nest.map_structure(
       lambda s: tf.zeros([1] + list(s.shape), s.dtype), agent_input_specs)
   input_ = encode(input_)
@@ -293,38 +294,38 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
     # ON_READ causes the replicated variable to act as independent variables for
     # each replica.
-    temp_grads = [
-        tf.Variable(tf.zeros_like(v), trainable=False,
-                    synchronization=tf.VariableSynchronization.ON_READ)
-        for v in agent.trainable_variables
-    ]
+    # temp_grads = [
+    #     tf.Variable(tf.zeros_like(v), trainable=False,
+    #                 synchronization=tf.VariableSynchronization.ON_READ)
+    #     for v in agent.trainable_variables
+    # ]
 
-  @tf.function
-  def minimize(iterator):
-    data = next(iterator)
+  # @tf.function
+  # def minimize(iterator):
+  #   data = next(iterator)
 
-    def compute_gradients(args):
-      args = tf.nest.pack_sequence_as(unroll_specs[0], decode(args, data))
-      with tf.GradientTape() as tape:
-        loss, logs = compute_loss(logger, parametric_action_distribution, agent,
-                                  *args)
-      grads = tape.gradient(loss, agent.trainable_variables)
-      for t, g in zip(temp_grads, grads):
-        t.assign(g)
-      return loss, logs
+  #   def compute_gradients(args):
+  #     args = tf.nest.pack_sequence_as(unroll_specs[0], decode(args, data))
+  #     with tf.GradientTape() as tape:
+  #       loss, logs = compute_loss(logger, parametric_action_distribution, agent,
+  #                                 *args)
+  #     grads = tape.gradient(loss, agent.trainable_variables)
+  #     for t, g in zip(temp_grads, grads):
+  #       t.assign(g)
+  #     return loss, logs
 
-    loss, logs = training_strategy.run(compute_gradients, (data,))
-    loss = training_strategy.experimental_local_results(loss)[0]
+  #   loss, logs = training_strategy.run(compute_gradients, (data,))
+  #   loss = training_strategy.experimental_local_results(loss)[0]
 
-    def apply_gradients(_):
-      optimizer.apply_gradients(zip(temp_grads, agent.trainable_variables))
+  #   def apply_gradients(_):
+  #     optimizer.apply_gradients(zip(temp_grads, agent.trainable_variables))
 
-    strategy.run(apply_gradients, (loss,))
+  #   strategy.run(apply_gradients, (loss,))
 
-    getattr(agent, 'end_of_training_step_callback',
-            lambda: logging.info('end_of_training_step_callback not found'))()
+  #   getattr(agent, 'end_of_training_step_callback',
+  #           lambda: logging.info('end_of_training_step_callback not found'))()
 
-    logger.step_end(logs, training_strategy, iter_frame_ratio)
+  #   logger.step_end(logs, training_strategy, iter_frame_ratio)
 
   agent_output_specs = tf.nest.map_structure(
       lambda t: tf.TensorSpec(t.shape[1:], t.dtype), initial_agent_output)
@@ -334,23 +335,24 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
   if FLAGS.init_checkpoint is not None:
     tf.print('Loading initial checkpoint from %s...' % FLAGS.init_checkpoint)
     with strategy.scope():
-      ckpt.restore(FLAGS.init_checkpoint).assert_consumed()
-  manager = tf.train.CheckpointManager(
-      ckpt, FLAGS.logdir, max_to_keep=100, keep_checkpoint_every_n_hours=6)
-  last_ckpt_time = 0  # Force checkpointing of the initial model.
-  if manager.latest_checkpoint:
-    logging.info('Restoring checkpoint: %s', manager.latest_checkpoint)
-    ckpt.restore(manager.latest_checkpoint).assert_consumed()
-    last_ckpt_time = time.time()
+      # ckpt.restore(FLAGS.init_checkpoint).assert_consumed()
+      ckpt.restore(FLAGS.init_checkpoint)
+  # manager = tf.train.CheckpointManager(
+  #     ckpt, FLAGS.logdir, max_to_keep=100, keep_checkpoint_every_n_hours=6)
+  # last_ckpt_time = 0  # Force checkpointing of the initial model.
+  # if manager.latest_checkpoint:
+  #   logging.info('Restoring checkpoint: %s', manager.latest_checkpoint)
+  #   ckpt.restore(manager.latest_checkpoint).assert_consumed()
+  #   last_ckpt_time = time.time()
 
   # Logging.
   summary_writer = tf.summary.create_file_writer(
-      FLAGS.logdir, flush_millis=20000, max_queue=1000)
+      FLAGS.logdir, flush_millis=20000, max_queue=10000)
   logger = utils.ProgressLogger(summary_writer=summary_writer,
-                                starting_step=iterations * iter_frame_ratio)
+                                starting_step=total_frames)
 
   servers = []
-  unroll_queues = []
+  # unroll_queues = []
   info_specs = (
       tf.TensorSpec([], tf.int64, 'episode_num_frames'),
       tf.TensorSpec([], tf.float32, 'episode_returns'),
@@ -360,11 +362,11 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
       info_specs + (tf.TensorSpec([], tf.int32, 'env_ids'),)))
   info_queue = utils.StructuredFIFOQueue(-1, episode_info_specs)
   # info_queue = utils.StructuredFIFOQueue(-1, info_specs)
-  dataBufferSpecs = (
-        tf.TensorSpec([], tf.int32, 'env_id'),
-        env_output_specs,
-        tf.TensorSpec([], tf.int64, 'action')
-    )
+  # dataBufferSpecs = (
+  #       tf.TensorSpec([], tf.int32, 'env_id'),
+  #       env_output_specs,
+  #       tf.TensorSpec([], tf.int64, 'action')
+  #   )
   # dataBufferQueue = utils.StructuredFIFOQueue(-1, dataBufferSpecs)
 
   def create_host(i, host, inference_devices):
@@ -388,8 +390,8 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
           FLAGS.num_envs, agent_state_specs, 'agent_states')
       actions = utils.Aggregator(FLAGS.num_envs, action_specs, 'actions')
 
-      unroll_specs[0] = Unroll(agent_state_specs, *store.unroll_specs)
-      unroll_queue = utils.StructuredFIFOQueue(1, unroll_specs[0])
+      # unroll_specs[0] = Unroll(agent_state_specs, *store.unroll_specs)
+      # unroll_queue = utils.StructuredFIFOQueue(1, unroll_specs[0])
 
       def add_batch_size(ts):
         return tf.TensorSpec([FLAGS.inference_batch_size] + list(ts.shape),
@@ -428,7 +430,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
           # Update steps and return.
           env_infos.add(env_ids, (0, env_outputs.reward, raw_rewards))
           done_ids = tf.gather(env_ids, tf.where(env_outputs.done)[:, 0])
-          dumpDones(trajBuffer, traj2Save, done_ids, num_tasks, eps_count, trans_count)
+          # dumpDones(trajBuffer, traj2Save, done_ids, num_tasks, eps_count, trans_count)
           if i == 0:
             done_episodes_info = env_infos.read(done_ids)
             info_queue.enqueue_many(EpisodeInfo(*(done_episodes_info + (done_ids,))))
@@ -453,7 +455,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
           # in queue.
           completed_ids, unrolls = store.append(
               env_ids, (prev_actions, env_outputs, agent_outputs))
-          unroll_queue.enqueue_many(unrolls)
+          # unroll_queue.enqueue_many(unrolls)
           first_agent_states.replace(completed_ids,
                                      agent_states.read(completed_ids))
 
@@ -462,7 +464,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
           actions.replace(env_ids, agent_outputs.action)
           # Return environment actions to environments.
 
-          appendStep(trajBuffer, env_outputs, agent_outputs.action, env_ids)
+          # appendStep(trajBuffer, env_outputs, agent_outputs.action, env_ids)
           # dataBufferQueue.enqueue((env_ids, env_outputs, agent_outputs.action))
           # dataBufferQueue.append((env_ids, env_outputs, agent_outputs.action, done_ids))
           return agent_outputs.action
@@ -472,45 +474,44 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
       with strategy.scope():
         server.bind([create_inference_fn(d) for d in inference_devices])
       server.start()
-      unroll_queues.append(unroll_queue)
+      # unroll_queues.append(unroll_queue)
       servers.append(server)
 
   for i, (host, inference_devices) in enumerate(hosts):
     create_host(i, host, inference_devices)
 
-  def dequeue(ctx):
-    # Create batch (time major).
-    env_outputs = tf.nest.map_structure(lambda *args: tf.stack(args), *[
-        unroll_queues[ctx.input_pipeline_id].dequeue()
-        for i in range(ctx.get_per_replica_batch_size(FLAGS.batch_size))
-    ])
-    env_outputs = env_outputs._replace(
-        prev_actions=utils.make_time_major(env_outputs.prev_actions),
-        env_outputs=utils.make_time_major(env_outputs.env_outputs),
-        agent_outputs=utils.make_time_major(env_outputs.agent_outputs))
-    env_outputs = env_outputs._replace(
-        env_outputs=encode(env_outputs.env_outputs))
-    # tf.data.Dataset treats list leafs as tensors, so we need to flatten and
-    # repack.
-    return tf.nest.flatten(env_outputs)
+  # def dequeue(ctx):
+  #   # Create batch (time major).
+  #   env_outputs = tf.nest.map_structure(lambda *args: tf.stack(args), *[
+  #       unroll_queues[ctx.input_pipeline_id].dequeue()
+  #       for i in range(ctx.get_per_replica_batch_size(FLAGS.batch_size))
+  #   ])
+  #   env_outputs = env_outputs._replace(
+  #       prev_actions=utils.make_time_major(env_outputs.prev_actions),
+  #       env_outputs=utils.make_time_major(env_outputs.env_outputs),
+  #       agent_outputs=utils.make_time_major(env_outputs.agent_outputs))
+  #   env_outputs = env_outputs._replace(
+  #       env_outputs=encode(env_outputs.env_outputs))
+  #   # tf.data.Dataset treats list leafs as tensors, so we need to flatten and
+  #   # repack.
+  #   return tf.nest.flatten(env_outputs)
 
-  def dataset_fn(ctx):
-    dataset = tf.data.Dataset.from_tensors(0).repeat(None)
+  # def dataset_fn(ctx):
+  #   dataset = tf.data.Dataset.from_tensors(0).repeat(None)
 
-    def _dequeue(_):
-      return dequeue(ctx)
+  #   def _dequeue(_):
+  #     return dequeue(ctx)
 
-    return dataset.map(
-        _dequeue, num_parallel_calls=ctx.num_replicas_in_sync // len(hosts))
+  #   return dataset.map(
+  #       _dequeue, num_parallel_calls=ctx.num_replicas_in_sync // len(hosts))
 
-  dataset = training_strategy.experimental_distribute_datasets_from_function(
-      dataset_fn)
-  it = iter(dataset)
+  # dataset = training_strategy.experimental_distribute_datasets_from_function(
+  #     dataset_fn)
+  # it = iter(dataset)
 
   def additional_logs():
-    tf.summary.scalar('learning_rate', learning_rate_fn(iterations))
     n_episodes = info_queue.size()
-    n_episodes -= n_episodes % FLAGS.log_episode_frequency
+    n_episodes -= n_episodes % 10
     if tf.not_equal(n_episodes, 0):
       episode_stats = info_queue.dequeue_many(n_episodes)
       # episode_keys = [
@@ -520,45 +521,58 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
       #   for value in tf.split(values,
       #                         values.shape[0] // FLAGS.log_episode_frequency):
       #     tf.summary.scalar(key, tf.reduce_mean(value))
-
-      for (frames, ep_return, raw_return, env_id) in zip(*episode_stats):
+      frames = [0 for i in range(len(FLAGS.task_names))]
+      ep_returns = [0 for i in range(len(FLAGS.task_names))]
+      env_counts = [0 for i in range(len(FLAGS.task_names))]
+      increment = 0
+      for (frame, ep_return, raw_return, env_id) in zip(*episode_stats):
         logging.info('Return: %f Raw return: %f Frames: %i Env id: %i', ep_return,
-                     raw_return, frames, env_id)
-        tf.summary.scalar('subtasks/' + FLAGS.task_names[env_id % len(FLAGS.task_names)] + '/episode_num_frames', frames)
-        tf.summary.scalar('subtasks/' + FLAGS.task_names[env_id % len(FLAGS.task_names)] + '/episode_return', ep_return)
-        tf.summary.scalar('subtasks/' + FLAGS.task_names[env_id % len(FLAGS.task_names)] + '/episode_raw_return', raw_return)
-    for idx in range(num_tasks):
-      if len(traj2Save[idx]['observation']) > dataSaveInterval:
-          traj2SaveEps[idx] += eps_count[idx]
-          traj2SaveTrans[idx] += trans_count[idx]
-          logging.info(f'saving data, save idx: {traj2SaveIdx[idx]} task: {task_set[idx]} cur transitions: {trans_count[idx]}  cur episodes: {eps_count[idx]}')
-          logging.info(f'saved transitions: {traj2SaveTrans[idx]} saved episodes: {traj2SaveEps[idx]}')
-          dataset2save = h5py.File(FLAGS.logdir + '/' + task_set[idx] + '_dataset/' + str(idx) + '_' + str(traj2SaveIdx[idx] % maxSave) + '.hdf5', 'w')
-          npify(traj2Save[idx])
-          for k in traj2Save[idx]:
-              dataset2save.create_dataset(k, data=traj2Save[idx][k], compression='gzip')
-          traj2Save[idx] = reset_data()
-          traj2SaveIdx[idx] += 1
-          eps_count[idx] = 0
-          trans_count[idx] = 0
+                     raw_return, frame, env_id)
+        env_counts[env_id % len(FLAGS.task_names)] += 1
+        frames[env_id % len(FLAGS.task_names)] += frame
+        increment += frame
+        ep_returns[env_id % len(FLAGS.task_names)] += ep_return
+      for idx, env_count in enumerate(env_counts):
+        if env_count != 0:
+          tf.summary.scalar('subtasks/' + FLAGS.task_names[idx] + '/episode_num_frames', frames[idx] / env_count)
+          tf.summary.scalar('subtasks/' + FLAGS.task_names[idx] + '/episode_return', ep_returns[idx] / env_count)
+      logger.step_cnt.assign_add(increment)
+      total_frames += increment
+      print(total_frames)
+    # for idx in range(num_tasks):
+    #   if len(traj2Save[idx]['observation']) > dataSaveInterval:
+    #       traj2SaveEps[idx] += eps_count[idx]
+    #       traj2SaveTrans[idx] += trans_count[idx]
+    #       logging.info(f'saving data, save idx: {traj2SaveIdx[idx]} task: {task_set[idx]} cur transitions: {trans_count[idx]}  cur episodes: {eps_count[idx]}')
+    #       logging.info(f'saved transitions: {traj2SaveTrans[idx]} saved episodes: {traj2SaveEps[idx]}')
+    #       dataset2save = h5py.File(FLAGS.logdir + '/' + task_set[idx] + '_dataset/' + str(idx) + '_' + str(traj2SaveIdx[idx] % maxSave) + '.hdf5', 'w')
+    #       npify(traj2Save[idx])
+    #       for k in traj2Save[idx]:
+    #           dataset2save.create_dataset(k, data=traj2Save[idx][k], compression='gzip')
+    #       traj2Save[idx] = reset_data()
+    #       traj2SaveIdx[idx] += 1
+    #       eps_count[idx] = 0
+    #       trans_count[idx] = 0
+    
 
 
   logger.start(additional_logs)
   # Execute learning.
-  while iterations < final_iteration:
+  while total_frames < FLAGS.total_environment_frames:
+    continue
     # Save checkpoint.
-    current_time = time.time()
-    if current_time - last_ckpt_time >= FLAGS.save_checkpoint_secs:
-      manager.save()
-      # Apart from checkpointing, we also save the full model (including
-      # the graph). This way we can load it after the code/parameters changed.
-      tf.saved_model.save(agent, os.path.join(FLAGS.logdir, 'saved_model'))
-      last_ckpt_time = current_time
-    minimize(it)
+    # current_time = time.time()
+    # if current_time - last_ckpt_time >= FLAGS.save_checkpoint_secs:
+    #   manager.save()
+    #   # Apart from checkpointing, we also save the full model (including
+    #   # the graph). This way we can load it after the code/parameters changed.
+    #   tf.saved_model.save(agent, os.path.join(FLAGS.logdir, 'saved_model'))
+    #   last_ckpt_time = current_time
+    # minimize(it)
   logger.shutdown()
-  manager.save()
-  tf.saved_model.save(agent, os.path.join(FLAGS.logdir, 'saved_model'))
+  # manager.save()
+  # tf.saved_model.save(agent, os.path.join(FLAGS.logdir, 'saved_model'))
   for server in servers:
     server.shutdown()
-  for unroll_queue in unroll_queues:
-    unroll_queue.close()
+  # for unroll_queue in unroll_queues:
+  #   unroll_queue.close()

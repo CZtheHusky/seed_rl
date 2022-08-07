@@ -68,7 +68,7 @@ flags.DEFINE_integer('num_actors_with_summaries', 4,
 flags.DEFINE_bool('render', False,
                   'Whether the first actor should render the environment.')
 flags.DEFINE_integer('save_interval', int(1e5), 'save interval')
-flags.DEFINE_integer('save_num', 10, 'save num')
+flags.DEFINE_integer('save_num', 100, 'save num')
 
 
 def are_summaries_enabled():
@@ -90,7 +90,6 @@ def actor_loop(create_env_fn, config=None, log_period=10):
   total_transitions = 0
   total_eps = 0
   cur_trans_num = 0
-  cur_ep_num = 0
   avg_ep_reward = 0
   actor_idx = FLAGS.task
   env_batch_size = FLAGS.env_batch_size
@@ -111,21 +110,21 @@ def actor_loop(create_env_fn, config=None, log_period=10):
 
   actor_step = 0
   with summary_writer.as_default():
-    while True:
+    while save_idx < FLAGS.save_num:
       try:
         # Client to communicate with the learner.
         client = grpc.Client(FLAGS.server_address)
         utils.update_config(config, client)
-        print('recreating environment')
+        print('creating environment')
 
-        batched_env = env_wrappers.BatchedEnvironment(
-            create_env_fn, env_batch_size, FLAGS.task * env_batch_size, config)
-        env_id = batched_env.env_ids
+        # batched_env = env_wrappers.BatchedEnvironment(
+        #     create_env_fn, env_batch_size, FLAGS.task * env_batch_size, config)
+        # env_id = batched_env.env_ids
 
-        # batched_env = create_env_fn(actor_idx, config)
-        # id_offset = FLAGS.task * env_batch_size
-        # env_id = [id_offset + i for i in range(env_batch_size)]
-        # env_id = np.array(env_id, np.int32)
+        batched_env = create_env_fn(actor_idx, config)
+        id_offset = FLAGS.task * env_batch_size
+        env_id = [id_offset + i for i in range(env_batch_size)]
+        env_id = np.array(env_id, np.int32)
 
         run_id = np.random.randint(
             low=0,
@@ -156,15 +155,15 @@ def actor_loop(create_env_fn, config=None, log_period=10):
         elapsed_inference_s_timer = timer_cls('actor/elapsed_inference_s', 1000)
         last_log_time = timeit.default_timer()
         last_global_step = 0
-        while True:
+        while save_idx < FLAGS.save_num:
           for i in range(env_batch_size):
-            # obsBuffer[i].append(observation['rgb'][i])
-            obsBuffer[i].append(observation[i])
+            obsBuffer[i].append(observation['rgb'][i])
+            # obsBuffer[i].append(observation[i])
           tf.summary.experimental.set_step(actor_step)
-          # env_output = utils.EnvOutput(reward, done, observation['rgb'],
-          #                              abandoned, episode_step)
-          env_output = utils.EnvOutput(reward, done, observation,
+          env_output = utils.EnvOutput(reward, done, observation['rgb'],
                                        abandoned, episode_step)
+          # env_output = utils.EnvOutput(reward, done, observation,
+          #                              abandoned, episode_step)
           with elapsed_inference_s_timer:
             action = client.inference(env_id, run_id, env_output, raw_reward)
           
@@ -193,19 +192,18 @@ def actor_loop(create_env_fn, config=None, log_period=10):
               global_step += episode_step[i]
               episodes_in_report += 1
 
-              if episode_raw_return[i] >= FLAGS.reward_threshold:
-                cur_trans_num += episode_step[i]
-                cur_ep_num += 1
-                avg_ep_reward += episode_raw_return[i]
-                append_data(data2save, obsBuffer[i], actionsBuffer[i], rewardBuffer[i], infos1Buffer[i], infos2Buffer[i], infos3Buffer[i], terminalBuffer[i])
-                total_eps += 1
+              # if episode_raw_return[i] >= FLAGS.reward_threshold:
+              cur_trans_num += episode_step[i]
+              total_eps += 1
+              avg_ep_reward += episode_raw_return[i]
+              append_data(data2save, obsBuffer[i], actionsBuffer[i], rewardBuffer[i], infos1Buffer[i], infos2Buffer[i], infos3Buffer[i], terminalBuffer[i])
+              logging.info(f'pid: {pid} adding data, episode transitions: {episode_step[i]}, episode reward: {episode_raw_return[i]}, episodes: {total_eps}, avg ep rew: {avg_ep_reward / total_eps}')
               if cur_trans_num >= FLAGS.save_interval:
                 total_transitions += cur_trans_num
-                logging.info(f'pid: {pid} saving data, save idx: {save_idx} env idx: {actor_idx} cur transitions: {cur_trans_num} tt transitions: {total_transitions} episodes: {cur_ep_num}')
-                dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
+                logging.info(f'pid: {pid} saving data')
+                dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx % FLAGS.save_num) + '.hdf5', 'w')
                 save_idx += 1
                 cur_trans_num = 0
-                cur_ep_num = 0
                 npify(data2save)
                 for k in data2save:
                     dataset2save.create_dataset(k, data=data2save[k], compression='gzip')
@@ -227,22 +225,6 @@ def actor_loop(create_env_fn, config=None, log_period=10):
                 episode_step_sum = 0
                 episodes_in_report = 0
                 last_log_time = current_time
-                # bufferLen = [0 for i in range(7)]
-                # for i in range(env_batch_size):
-                #   bufferLen[0] += len(obsBuffer[i])
-                #   bufferLen[1] += len(actionsBuffer[i])
-                #   bufferLen[2] += len(rewardBuffer[i])
-                #   bufferLen[3] += len(terminalBuffer[i])
-                #   bufferLen[4] += len(infos1Buffer[i])
-                #   bufferLen[5] += len(infos3Buffer[i])
-                #   bufferLen[6] += len(infos2Buffer[i])
-                # logging.info('buffer length:')
-                # logging.info(bufferLen)
-                # dataLen = []
-                # for k in data2save:
-                #   dataLen.append(len(data2save[k]))
-                # logging.info('data2save length:')
-                # logging.info(dataLen)
               episode_step[i] = 0
               episode_return[i] = 0
               episode_raw_return[i] = 0
@@ -258,16 +240,16 @@ def actor_loop(create_env_fn, config=None, log_period=10):
           # from the terminal state to the resetted state in the next loop
           # iteration (with zero rewards).
 
-          with timer_cls('actor/elapsed_env_reset_s', 10):
-            observation = batched_env.reset_if_done(done)
+          # with timer_cls('actor/elapsed_env_reset_s', 10):
+          #   observation = batched_env.reset_if_done(done)
 
           # if is_rendering_enabled and done[0]:
           #   batched_env.render()
 
           actor_step += 1
       except (tf.errors.UnavailableError, tf.errors.CancelledError):
-        logging.info(f'saving data, save idx: {save_idx} env idx: {actor_idx} cur transitions: {cur_trans_num} tt transitions: {total_transitions} episodes: {cur_ep_num}')
-        dataset2save = h5py.File(FLAGS.logdir + '/dataset/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
+        logging.info(f'pid: {pid} saving data')
+        dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx % FLAGS.save_num) + '.hdf5', 'w')
         npify(data2save)
         for k in data2save:
             dataset2save.create_dataset(k, data=data2save[k], compression='gzip')
@@ -275,3 +257,9 @@ def actor_loop(create_env_fn, config=None, log_period=10):
         logging.info('Inference call failed. This is normal at the end of '
                      'training.')
         batched_env.close()
+  with open(file=FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_dataset.txt', mode='w') as f:
+    f.write('Trajectory num: {}\n'.format(total_eps))
+    f.write('Transition num: {}\n'.format(total_transitions))
+    f.write('Total episode return: {}\n'.format(avg_ep_reward))
+    f.write('Average episode return: {}\n'.format(avg_ep_reward/total_eps))
+    f.write('Average episode trans: {}\n'.format(total_transitions/total_eps))

@@ -23,7 +23,7 @@ from absl import app
 from absl import flags
 
 from seed_rl.agents.vtrace import sampler
-from seed_rl.common import actor
+from seed_rl.common import dmlab_sampler
 from seed_rl.common import common_flags  
 from seed_rl.dmlab import env
 from seed_rl.dmlab import networks
@@ -41,6 +41,40 @@ flags.DEFINE_float('rms_decay', .99, 'RMS decay.')
 flags.DEFINE_string('sub_task', 'all', 'sub tasks, i.e. dmlab30, dmlab26, all, others')
 flags.DEFINE_list('task_names', [], 'names of tasks')
 flags.DEFINE_list('action_set', [], 'default action set')
+flags.DEFINE_integer('reward_threshold', 0, 'reward threshold')
+
+# Training.
+flags.DEFINE_integer('save_checkpoint_secs', 900,
+                     'Checkpoint save period in seconds.')
+flags.DEFINE_integer('total_environment_frames', int(1e9),
+                     'Total environment frames to train for.')
+flags.DEFINE_integer('batch_size', 32, 'Batch size for training.')
+flags.DEFINE_integer('inference_batch_size', 64,
+                     'Batch size for inference, -1 for auto-tune.')
+flags.DEFINE_integer('unroll_length', 100, 'Unroll length in agent steps.')
+flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')
+flags.DEFINE_string('init_checkpoint', None,
+                    'Path to the checkpoint used to initialize the agent.')
+
+# Loss settings.
+flags.DEFINE_float('entropy_cost', 0.0033391318945337044, 'Entropy cost/multiplier.')
+flags.DEFINE_float('target_entropy', None, 'If not None, the entropy cost is '
+                   'automatically adjusted to reach the desired entropy level.')
+flags.DEFINE_float('entropy_cost_adjustment_speed', 10., 'Controls how fast '
+                   'the entropy cost coefficient is adjusted.')
+flags.DEFINE_float('baseline_cost', .5, 'Baseline cost/multiplier.')
+flags.DEFINE_float('kl_cost', 0., 'KL(old_policy|new_policy) loss multiplier.')
+flags.DEFINE_float('discounting', .99, 'Discounting factor.')
+flags.DEFINE_float('lambda_', .95, 'Lambda.')
+flags.DEFINE_float('max_abs_reward', 0.,
+                   'Maximum absolute reward when calculating loss.'
+                   'Use 0. to disable clipping.')
+
+# Logging
+flags.DEFINE_integer('log_batch_frequency', 100, 'We average that many batches '
+                     'before logging batch statistics like entropy.')
+flags.DEFINE_integer('log_episode_frequency', 100, 'We average that many episodes'
+                     ' before logging average episode return and length.')
 
 def create_agent(action_space, unused_env_observation_space,
                  unused_parametric_action_distribution):
@@ -73,7 +107,7 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
   if FLAGS.run_mode == 'actor':
-    actor.actor_loop(env.create_environment)
+    dmlab_sampler.actor_loop(env.create_environment)
   elif FLAGS.run_mode == 'learner':
     for i in range(len(FLAGS.task_names)):
       cur_path = FLAGS.logdir + '/' + FLAGS.task_names[i] + '_dataset'
@@ -87,4 +121,7 @@ def main(argv):
 
 
 if __name__ == '__main__':
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  if gpus:
+      tf.config.experimental.set_memory_growth(gpus[0], True)
   app.run(main)

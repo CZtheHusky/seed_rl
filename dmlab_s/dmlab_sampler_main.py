@@ -74,6 +74,7 @@ flags.DEFINE_float('reward_threshold', 0., 'reward threshold for sampling')
 flags.DEFINE_integer('env_batch_size', int(4), 'env batch size')
 flags.DEFINE_integer('cuda_device', 0, 'cuda id, -1 for cpu')
 flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')
+flags.DEFINE_list('task_names', [rooms_watermaze], 'names of the tasks')
 
 def actor_loop(create_env_fn, create_optimizer_fn, log_period=10):
   """Main actor loop.
@@ -214,7 +215,7 @@ def actor_loop(create_env_fn, create_optimizer_fn, log_period=10):
           if cur_trans_num >= FLAGS.save_interval:
             total_transitions += cur_trans_num
             print(f'pid: {pid} saving data, save idx: {save_idx} env idx: {actor_idx} cur transitions: {cur_trans_num} tt transitions: {total_transitions} episodes: {cur_ep_num}')
-            dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
+            dataset2save = h5py.File('./' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
             save_idx += 1
             cur_trans_num = 0
             cur_ep_num = 0
