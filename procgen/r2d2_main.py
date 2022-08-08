@@ -38,6 +38,8 @@ flags.DEFINE_float('adam_epsilon', 1e-3, 'Adam epsilon.')
 flags.DEFINE_string('sub_task', 'all', 'sub tasks')
 flags.DEFINE_list('task_names', [], 'names of tasks')
 flags.DEFINE_float('reward_threshold', 0., 'reward threshold for sampling')
+flags.DEFINE_string('init_checkpoint', '../procgen_ckpt/climber/ckpt-74',
+                    'Path to the checkpoint used to initialize the agent.')
 
 def create_agent(env_output_specs, num_actions):
   return networks.DuelingLSTMDQNNet(

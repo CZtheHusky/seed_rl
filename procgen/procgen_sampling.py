@@ -51,7 +51,7 @@ flags.DEFINE_float('replay_ratio', 1.5,
                    'used for training. '
                    'The default of 1.5 corresponds to an interpretation of the '
                    'R2D2 paper using the end of section 2.3.')
-flags.DEFINE_integer('inference_batch_size', 256,
+flags.DEFINE_integer('inference_batch_size', 32,
                      'Batch size for inference, -1 for auto-tune.')
 flags.DEFINE_integer('unroll_length', 100, 'Unroll length in agent steps.')
 flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')

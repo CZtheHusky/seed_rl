@@ -808,7 +808,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
     last_num_env_frames = total_env_frames
     last_log_time = time.time()
     # max_gradient_norm_before_clip = 0.
-    while total_env_frames < final_iteration:
+    while True:
       num_env_frames = total_env_frames
       tf.summary.experimental.set_step(total_env_frames)
 

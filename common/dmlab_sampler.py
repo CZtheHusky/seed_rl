@@ -72,7 +72,7 @@ flags.DEFINE_integer('num_actors_with_summaries', 4,
 flags.DEFINE_bool('render', False,
                   'Whether the first actor should render the environment.')
 flags.DEFINE_integer('save_interval', int(1e5), 'save interval')
-flags.DEFINE_integer('save_num', 20, 'save num')
+flags.DEFINE_integer('traj_num', 2600, 'traj num')
 
 
 def are_summaries_enabled():
@@ -120,7 +120,7 @@ def actor_loop(create_env_fn, config=None, log_period=30):
   actor_step = 0
   pid = os.getpid()
   with summary_writer.as_default():
-    while save_idx < FLAGS.save_num:
+    while total_eps < FLAGS.traj_num:
       try:
         # Client to communicate with the learner.
         client = grpc.Client(FLAGS.server_address)
@@ -151,7 +151,7 @@ def actor_loop(create_env_fn, config=None, log_period=30):
         elapsed_inference_s_timer = timer_cls('actor/elapsed_inference_s', 1000)
         last_log_time = timeit.default_timer()
         last_global_step = 0
-        while save_idx < FLAGS.save_num:
+        while total_eps < FLAGS.traj_num:
           for i in range(env_batch_size):
             obsBuffer[i].append(observation[i])
           tf.summary.experimental.set_step(actor_step)
@@ -207,10 +207,10 @@ def actor_loop(create_env_fn, config=None, log_period=30):
               avg_ep_reward += episode_raw_return[i]
               append_data(data2save, obsBuffer[i], actionsBuffer[i], rewardBuffer[i], infosBuffer[i], terminalBuffer[i])
               logging.info(f'pid: {pid} adding data, episode transitions: {episode_step[i]}, episode reward: {episode_raw_return[i]}, episodes: {total_eps}, avg ep rew: {avg_ep_reward / total_eps}')
-              if cur_trans_num >= FLAGS.save_interval:
+              if cur_trans_num >= FLAGS.save_interval or total_eps >= FLAGS.traj_num:
                 total_transitions += cur_trans_num
                 logging.info(f'pid: {pid} saving data')
-                dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx % FLAGS.save_num) + '.hdf5', 'w')
+                dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
                 save_idx += 1
                 cur_trans_num = 0
                 npify(data2save)
@@ -260,12 +260,6 @@ def actor_loop(create_env_fn, config=None, log_period=30):
           #   batched_env.render()
           actor_step += 1
       except (tf.errors.UnavailableError, tf.errors.CancelledError):
-        logging.info(f'pid: {pid} saving data')
-        dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx % FLAGS.save_num) + '.hdf5', 'w')
-        npify(data2save)
-        for k in data2save:
-            dataset2save.create_dataset(k, data=data2save[k], compression='gzip')
-        logging.info(f'actor terminated, env idx: {actor_idx}, total saves: {save_idx} total transitions: {total_transitions} total episodes: {total_eps} avg saved ep return: {avg_ep_reward / total_eps}')
         logging.info('Inference call failed. This is normal at the end of '
                      'training.')
         batched_env.close()

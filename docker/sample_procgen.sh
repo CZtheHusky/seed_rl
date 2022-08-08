@@ -36,7 +36,7 @@ ACTOR_BINARY="CUDA_VISIBLE_DEVICES='' python3 ../${ENVIRONMENT}/${ENVIRONMENT}_s
 LEARNER_BINARY="python3 ../${ENVIRONMENT}/${ENVIRONMENT}_sampling.py --run_mode=learner";
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 NUM_ENVS=$(($NUM_ACTORS*$ENV_BATCH_SIZE))
-CKPT_PATH="../procgen_experts/${SUB_TASK}/ckpt-48"
+CKPT_PATH="../procgen_experts/${SUB_TASK}/ckpt-76"
 MODULE_PATH="../procgen_experts/${SUB_TASK}/saved_model"
 
 tmux new-session -d -t seed_rl

@@ -558,7 +558,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
   logger.start(additional_logs)
   # Execute learning.
-  while total_frames < FLAGS.total_environment_frames:
+  while True:
     continue
     # Save checkpoint.
     # current_time = time.time()
