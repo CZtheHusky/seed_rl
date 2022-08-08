@@ -868,7 +868,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
         """Logs environment summaries."""
         summary_writer.set_as_default()
         n_episodes = info_queue.size()
-        n_episodes -= n_episodes % 100
+        n_episodes -= n_episodes % 1000
         if tf.not_equal(n_episodes, 0):
           tf.summary.experimental.set_step(num_env_frames)
           episode_info = info_queue.dequeue_many(n_episodes)
