@@ -34,7 +34,7 @@ FLAGS = flags.FLAGS
 
 # Optimizer settings.
 flags.DEFINE_float('learning_rate', 0.000398313170083425, 'Learning rate.')
-flags.DEFINE_float('adam_epsilon', .00000003125, 'Adam epsilon.')
+flags.DEFINE_float('adam_epsilon', .00000000003125, 'Adam epsilon.')
 flags.DEFINE_float('rms_epsilon', .1, 'RMS epsilon.')
 flags.DEFINE_float('rms_momentum', 0., 'RMS momentum.')
 flags.DEFINE_float('rms_decay', .99, 'RMS decay.')
@@ -110,6 +110,12 @@ def main(argv):
     FLAGS.task_names = games.lasers
   elif FLAGS.sub_task == 'rooms':
     FLAGS.task_names = games.rooms
+  elif FLAGS.sub_task == 'psychlab':
+    FLAGS.task_names = games.psychlab
+  elif FLAGS.sub_task == 'psychlab_memory':
+    FLAGS.task_names = games.psychlab_memory
+  elif FLAGS.sub_task == 'psychlab_visuospatial':
+    FLAGS.task_names = games.psychlab_visuospatial
   else:
     FLAGS.task_names = [FLAGS.sub_task]
   if len(argv) > 1:

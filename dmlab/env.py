@@ -172,6 +172,14 @@ def create_environment(task, config):
       cur_game = 'contributed/dmlab30/' + games.rooms[task % len(games.rooms)]
     elif config.sub_task == "others":
       cur_game = games.OTHERS[task % len(games.OTHERS)]
+    elif config.sub_task == "psychlab":
+      cur_game = 'contributed/psychlab/' + games.psychlab[task % len(games.psychlab)]
+    elif config.sub_task == "psychlab_memory":
+      cur_game = 'contributed/psychlab/memory_suite_01/' + games.psychlab_memory[task % len(games.psychlab_memory)]
+    elif config.sub_task == "psychlab_visuospatial":
+      cur_game = 'contributed/psychlab/visuospatial_suite/' + games.psychlab_visuospatial[task % len(games.psychlab_visuospatial)]
+    elif config.sub_task == "fast_mapping":
+      cur_game = 'contributed/fast_mapping/' + games.fast_mapping[task % len(games.fast_mapping)]
     elif config.sub_task in games.DMLAB_30:
       cur_game = 'contributed/dmlab30/' + config.sub_task
     elif config.sub_task in games.OTHERS:

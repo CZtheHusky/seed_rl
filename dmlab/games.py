@@ -261,6 +261,43 @@ DMLAB_26 = [
     'explore_object_rewards_many',
 ]
 
+psychlab = [
+    'arbitrary_visuomotor_mapping',  
+    'multiple_object_tracking',  
+    'sequential_comparison',    
+    'continuous_recognition',        
+    'glass_pattern_detection',  
+    'motion_discrimination_easy',     
+    'odd_one_out',               
+    'temporal_bisection',
+    'cued_temporal_production',      
+    'harlow',                   
+    'motion_discrimination',                           
+    'temporal_discrimination',                           
+    'landoltC_identification',  
+    'multiple_object_tracking_easy',  
+    'ready_set_go',              
+    'visual_search',
+]
+
+psychlab_memory = [
+    'arbitrary_visuomotor_mapping_holdout_extrapolate',  'continuous_recognition_holdout_interpolate',  'explore_goal_locations_interpolate',
+    'arbitrary_visuomotor_mapping_holdout_interpolate',  'continuous_recognition_train',                'explore_goal_locations_train_large',
+    'arbitrary_visuomotor_mapping_train',                'explore_goal_locations_extrapolate',          'explore_goal_locations_train_small',
+    'change_detection_holdout_extrapolate',              'explore_goal_locations_holdout_extrapolate',  'what_then_where_holdout_interpolate',
+    'change_detection_holdout_interpolate',              'explore_goal_locations_holdout_interpolate',  'what_then_where_train',
+    'change_detection_train',                            'explore_goal_locations_holdout_large',
+    'continuous_recognition_holdout_extrapolate',        'explore_goal_locations_holdout_small',
+]
+
+psychlab_visuospatial = [
+    'memory_guided_saccade',  'odd_one_out',  'pathfinder',  'pursuit',  'visually_guided_antisaccade',  'visually_guided_prosaccade',  'visual_match',
+]
+
+fast_mapping = [
+    'fast_mapping_train',    'slow_mapping_train',
+]
+
 OTHERS = [
     'lt_chasm',
     'lt_hallway_slope',
