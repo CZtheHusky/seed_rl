@@ -26,7 +26,7 @@ AGENT=$2
 NUM_ACTORS=$3
 ENV_BATCH_SIZE=$4
 LOG_DIR=$5
-PORT=$6
+CKPT_ID=$6
 SUB_TASK=$7
 shift 6
 
@@ -56,8 +56,8 @@ tmux send-keys "python3 check_gpu.py 2> /dev/null"
 tmux send-keys KPEnter
 tmux send-keys "stop_seed"
 tmux new-window -d -n sampler
-mkdir "/outdata/logs/seed_rl/sampler_${ENVIRONMENT}_${AGENT}"
-mkdir "/outdata/logs/seed_rl/sampler_${ENVIRONMENT}_${AGENT}/${SUB_TASK}"
+mkdir "/outdata/sampler_${ENVIRONMENT}_${AGENT}"
+mkdir "/outdata/sampler_${ENVIRONMENT}_${AGENT}/${SUB_TASK}"
 mkdir "${LOG_DIR}"
 COMMAND='rm '"${LOG_DIR}"' -Rf; '"${LEARNER_BINARY}"' --logtostderr --init_checkpoint '"${CKPT_PATH}"' --logdir '"${LOG_DIR}"' --sub_task '"${SUB_TASK}"' --pdb_post_mortem --num_envs='"${NUM_ENVS}"' --env_batch_size='"${ENV_BATCH_SIZE}"''
 # COMMAND='rm '"${LOG_DIR}"' -Rf; '"${LEARNER_BINARY}"' --logtostderr --init_model '"${MODULE_PATH}"' --logdir '"${LOG_DIR}"' --sub_task '"${SUB_TASK}"' --pdb_post_mortem --num_envs='"${NUM_ENVS}"' --env_batch_size='"${ENV_BATCH_SIZE}"''
