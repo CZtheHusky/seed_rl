@@ -101,15 +101,6 @@ def actor_loop(create_env_fn, config=None, log_period=30):
   dummy_infos = np.array(0, dtype=np.uint8)
   logging.info('Starting actor loop. Task: %r. Environment batch size: %r',
                FLAGS.task, env_batch_size)
-  # is_rendering_enabled = FLAGS.render and FLAGS.task == 0
-  if are_summaries_enabled():
-    summary_writer = tf.summary.create_file_writer(
-        os.path.join(FLAGS.logdir, 'actor_{}'.format(FLAGS.task)),
-        flush_millis=20000, max_queue=1000)
-    timer_cls = profiling.ExportingTimer
-  else:
-    summary_writer = tf.summary.create_noop_writer()
-    timer_cls = utils.nullcontext
   
   obsBuffer = [[] for i in range(env_batch_size)]
   actionsBuffer = [[] for i in range(env_batch_size)]
@@ -119,150 +110,142 @@ def actor_loop(create_env_fn, config=None, log_period=30):
   data2save = reset_data()
   actor_step = 0
   pid = os.getpid()
-  with summary_writer.as_default():
-    while total_eps < FLAGS.traj_num:
-      try:
-        # Client to communicate with the learner.
-        client = grpc.Client(FLAGS.server_address)
-        utils.update_config(config, client)
-        batched_env = env_wrappers.BatchedEnvironment(
-            create_env_fn, env_batch_size, FLAGS.task * env_batch_size, config)
+  while total_eps < FLAGS.traj_num:
+    try:
+      # Client to communicate with the learner.
+      client = grpc.Client(FLAGS.server_address)
+      utils.update_config(config, client)
+      batched_env = env_wrappers.BatchedEnvironment(
+          create_env_fn, env_batch_size, FLAGS.task * env_batch_size, config)
 
-        env_id = batched_env.env_ids
-        run_id = np.random.randint(
-            low=0,
-            high=np.iinfo(np.int64).max,
-            size=env_batch_size,
-            dtype=np.int64)
-        observation = batched_env.reset()
-        reward = np.zeros(env_batch_size, np.float32)
-        raw_reward = np.zeros(env_batch_size, np.float32)
-        done = np.zeros(env_batch_size, np.bool)
-        abandoned = np.zeros(env_batch_size, np.bool)
-        global_step = 0
-        episode_step = np.zeros(env_batch_size, np.int32)
-        episode_return = np.zeros(env_batch_size, np.float32)
-        episode_raw_return = np.zeros(env_batch_size, np.float32)
-        episode_step_sum = 0
-        episode_return_sum = 0
-        episode_raw_return_sum = 0
-        episodes_in_report = 0
+      env_id = batched_env.env_ids
+      run_id = np.random.randint(
+          low=0,
+          high=np.iinfo(np.int64).max,
+          size=env_batch_size,
+          dtype=np.int64)
+      observation = batched_env.reset()
+      reward = np.zeros(env_batch_size, np.float32)
+      raw_reward = np.zeros(env_batch_size, np.float32)
+      done = np.zeros(env_batch_size, np.bool)
+      abandoned = np.zeros(env_batch_size, np.bool)
+      global_step = 0
+      episode_step = np.zeros(env_batch_size, np.int32)
+      episode_return = np.zeros(env_batch_size, np.float32)
+      episode_raw_return = np.zeros(env_batch_size, np.float32)
+      episode_step_sum = 0
+      episode_return_sum = 0
+      episode_raw_return_sum = 0
+      episodes_in_report = 0
+      last_log_time = timeit.default_timer()
+      last_global_step = 0
+      while total_eps < FLAGS.traj_num:
+        for i in range(env_batch_size):
+          obsBuffer[i].append(observation[i])
+        tf.summary.experimental.set_step(actor_step)
+        env_output = utils.EnvOutput(reward, done, observation,
+                                      abandoned, episode_step)
+        action = client.inference(env_id, run_id, env_output, raw_reward)
+        np_action = action.numpy()
+        observation, reward, done, info = batched_env.step(np_action)
+          # print('step')
+        # if is_rendering_enabled:
+        #   batched_env.render()
+        for i in range(env_batch_size):
+          actionsBuffer[i].append(FLAGS.action_set[np_action[i]])
+          rewardBuffer[i].append(reward[i])
+          terminalBuffer[i].append(done[i])
+          infosBuffer[i].append(dummy_infos)
+          episode_step[i] += 1
+          episode_return[i] += reward[i]
+          raw_reward[i] = float((info[i] or {}).get('score_reward',
+                                                    reward[i]))
+          episode_raw_return[i] += raw_reward[i]
+          # If the info dict contains an entry abandoned=True and the
+          # episode was ended (done=True), then we need to specially handle
+          # the final transition as per the explanations below.
+          abandoned[i] = (info[i] or {}).get('abandoned', False)
+          assert done[i] if abandoned[i] else True
+          if done[i]:
+            # If the episode was abandoned, we need to report the final
+            # transition including the final observation as if the episode has
+            # not terminated yet. This way, learning algorithms can use the
+            # transition for learning.
+            if abandoned[i]:
+              # We do not signal yet that the episode was abandoned. This will
+              # happen for the transition from the terminal state to the
+              # resetted state.
+              assert env_batch_size == 1 and i == 0, (
+                  'Mixing of batched and non-batched inference calls is not '
+                  'yet supported')
+              env_output = utils.EnvOutput(reward,
+                                            np.array([False]), observation,
+                                            np.array([False]), episode_step)
+              client.inference(env_id, run_id, env_output, raw_reward)
+              reward[i] = 0.0
+              raw_reward[i] = 0.0
+            # append_data(data, obs, act, rew, infos, done)
+            # if episode_raw_return[i] >= FLAGS.reward_threshold:
+            cur_trans_num += episode_step[i]
+            total_eps += 1
+            avg_ep_reward += episode_raw_return[i]
+            append_data(data2save, obsBuffer[i], actionsBuffer[i], rewardBuffer[i], infosBuffer[i], terminalBuffer[i])
+            logging.info(f'pid: {pid} adding data, episode transitions: {episode_step[i]}, episode reward: {episode_raw_return[i]}, episodes: {total_eps}, avg ep rew: {avg_ep_reward / total_eps}')
+            if cur_trans_num >= FLAGS.save_interval or total_eps >= FLAGS.traj_num:
+              total_transitions += cur_trans_num
+              logging.info(f'pid: {pid} saving data')
+              dataset2save = h5py.File(FLAGS.logdir + '/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
+              save_idx += 1
+              cur_trans_num = 0
+              npify(data2save)
+              for k in data2save:
+                  dataset2save.create_dataset(k, data=data2save[k], compression='gzip')
+              del data2save
+              data2save = reset_data()
 
-        elapsed_inference_s_timer = timer_cls('actor/elapsed_inference_s', 1000)
-        last_log_time = timeit.default_timer()
-        last_global_step = 0
-        while total_eps < FLAGS.traj_num:
-          for i in range(env_batch_size):
-            obsBuffer[i].append(observation[i])
-          tf.summary.experimental.set_step(actor_step)
-          env_output = utils.EnvOutput(reward, done, observation,
-                                       abandoned, episode_step)
-          with elapsed_inference_s_timer:
-            action = client.inference(env_id, run_id, env_output, raw_reward)
-          np_action = action.numpy()
-          with timer_cls('actor/elapsed_env_step_s', 1000):
-            observation, reward, done, info = batched_env.step(np_action)
-            # print('step')
-          # if is_rendering_enabled:
-          #   batched_env.render()
-          for i in range(env_batch_size):
-            actionsBuffer[i].append(FLAGS.action_set[np_action[i]])
-            rewardBuffer[i].append(reward[i])
-            terminalBuffer[i].append(done[i])
-            infosBuffer[i].append(dummy_infos)
-            episode_step[i] += 1
-            episode_return[i] += reward[i]
-            raw_reward[i] = float((info[i] or {}).get('score_reward',
-                                                      reward[i]))
-            episode_raw_return[i] += raw_reward[i]
-            # If the info dict contains an entry abandoned=True and the
-            # episode was ended (done=True), then we need to specially handle
-            # the final transition as per the explanations below.
-            abandoned[i] = (info[i] or {}).get('abandoned', False)
-            assert done[i] if abandoned[i] else True
-            if done[i]:
-              # If the episode was abandoned, we need to report the final
-              # transition including the final observation as if the episode has
-              # not terminated yet. This way, learning algorithms can use the
-              # transition for learning.
-              if abandoned[i]:
-                # We do not signal yet that the episode was abandoned. This will
-                # happen for the transition from the terminal state to the
-                # resetted state.
-                assert env_batch_size == 1 and i == 0, (
-                    'Mixing of batched and non-batched inference calls is not '
-                    'yet supported')
-                env_output = utils.EnvOutput(reward,
-                                             np.array([False]), observation,
-                                             np.array([False]), episode_step)
-                with elapsed_inference_s_timer:
-                  # action is ignored
-                  client.inference(env_id, run_id, env_output, raw_reward)
-                reward[i] = 0.0
-                raw_reward[i] = 0.0
-              # append_data(data, obs, act, rew, infos, done)
-              # if episode_raw_return[i] >= FLAGS.reward_threshold:
-              cur_trans_num += episode_step[i]
-              total_eps += 1
-              avg_ep_reward += episode_raw_return[i]
-              append_data(data2save, obsBuffer[i], actionsBuffer[i], rewardBuffer[i], infosBuffer[i], terminalBuffer[i])
-              logging.info(f'pid: {pid} adding data, episode transitions: {episode_step[i]}, episode reward: {episode_raw_return[i]}, episodes: {total_eps}, avg ep rew: {avg_ep_reward / total_eps}')
-              if cur_trans_num >= FLAGS.save_interval or total_eps >= FLAGS.traj_num:
-                total_transitions += cur_trans_num
-                logging.info(f'pid: {pid} saving data')
-                dataset2save = h5py.File(FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_' + str(save_idx) + '.hdf5', 'w')
-                save_idx += 1
-                cur_trans_num = 0
-                npify(data2save)
-                for k in data2save:
-                    dataset2save.create_dataset(k, data=data2save[k], compression='gzip')
-                del data2save
-                data2save = reset_data()
+            # Periodically log statistics.
+            current_time = timeit.default_timer()
+            episode_step_sum += episode_step[i]
+            episode_return_sum += episode_return[i]
+            episode_raw_return_sum += episode_raw_return[i]
+            global_step += episode_step[i]
+            episodes_in_report += 1
+            if current_time - last_log_time >= log_period:
+              logging.info(
+                  'Actor steps: %i, Return: %f Raw return: %f '
+                  'Episode steps: %f, Speed: %f steps/s', global_step,
+                  episode_return_sum / episodes_in_report,
+                  episode_raw_return_sum / episodes_in_report,
+                  episode_step_sum / episodes_in_report,
+                  (global_step - last_global_step) /
+                  (current_time - last_log_time))
+              last_global_step = global_step
+              episode_return_sum = 0
+              episode_raw_return_sum = 0
+              episode_step_sum = 0
+              episodes_in_report = 0
+              last_log_time = current_time
 
-              # Periodically log statistics.
-              current_time = timeit.default_timer()
-              episode_step_sum += episode_step[i]
-              episode_return_sum += episode_return[i]
-              episode_raw_return_sum += episode_raw_return[i]
-              global_step += episode_step[i]
-              episodes_in_report += 1
-              if current_time - last_log_time >= log_period:
-                logging.info(
-                    'Actor steps: %i, Return: %f Raw return: %f '
-                    'Episode steps: %f, Speed: %f steps/s', global_step,
-                    episode_return_sum / episodes_in_report,
-                    episode_raw_return_sum / episodes_in_report,
-                    episode_step_sum / episodes_in_report,
-                    (global_step - last_global_step) /
-                    (current_time - last_log_time))
-                last_global_step = global_step
-                episode_return_sum = 0
-                episode_raw_return_sum = 0
-                episode_step_sum = 0
-                episodes_in_report = 0
-                last_log_time = current_time
+            episode_step[i] = 0
+            episode_return[i] = 0
+            episode_raw_return[i] = 0
+            obsBuffer[i].clear()
+            actionsBuffer[i].clear()
+            rewardBuffer[i].clear()
+            terminalBuffer[i].clear()
+            infosBuffer[i].clear()
+        # Finally, we reset the episode which will report the transition
+        # from the terminal state to the resetted state in the next loop
+        # iteration (with zero rewards).
+        observation = batched_env.reset_if_done(done)
 
-              episode_step[i] = 0
-              episode_return[i] = 0
-              episode_raw_return[i] = 0
-              obsBuffer[i].clear()
-              actionsBuffer[i].clear()
-              rewardBuffer[i].clear()
-              terminalBuffer[i].clear()
-              infosBuffer[i].clear()
-          # Finally, we reset the episode which will report the transition
-          # from the terminal state to the resetted state in the next loop
-          # iteration (with zero rewards).
-          with timer_cls('actor/elapsed_env_reset_s', 10):
-            observation = batched_env.reset_if_done(done)
-
-          # if is_rendering_enabled and done[0]:
-          #   batched_env.render()
-          actor_step += 1
-      except (tf.errors.UnavailableError, tf.errors.CancelledError):
-        logging.info('Inference call failed. This is normal at the end of '
-                     'training.')
-        batched_env.close()
+        # if is_rendering_enabled and done[0]:
+        #   batched_env.render()
+        actor_step += 1
+    except (tf.errors.UnavailableError, tf.errors.CancelledError):
+      logging.info('Inference call failed. This is normal at the end of '
+                    'training.')
+      batched_env.close()
   with open(file=FLAGS.logdir + '/' + FLAGS.task_names[actor_idx % len(FLAGS.task_names)] + '_dataset/' + str(actor_idx) + '_dataset.txt', mode='w') as f:
     f.write('Trajectory num: {}\n'.format(total_eps))
     f.write('Transition num: {}\n'.format(total_transitions))

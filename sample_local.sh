@@ -34,7 +34,7 @@ export CUDA=$6
 export CKPT_ID=$7
 
 RUN_NAME="sampler_${ENVIRONMENT}_${AGENT}_${NUM_ACTORS}_${ENV_PER_ACTOR}_${SUB_TASK}_${CUDA}_${CKPT_ID}"
-LOG_DIR="/outdata/sampler_${ENVIRONMENT}_${AGENT}/${SUB_TASK}/${NUM_ACTORS}_${ENV_PER_ACTOR}_${CUDA}_${CKPT_ID}"
+LOG_DIR="/outdata/sampler_${ENVIRONMENT}_${AGENT}/${SUB_TASK}"
 # shift 4
 shift 3
 if [[ $1 ]]; then

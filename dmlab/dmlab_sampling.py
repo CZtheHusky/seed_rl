@@ -109,10 +109,6 @@ def main(argv):
   if FLAGS.run_mode == 'actor':
     dmlab_sampler.actor_loop(env.create_environment)
   elif FLAGS.run_mode == 'learner':
-    for i in range(len(FLAGS.task_names)):
-      cur_path = FLAGS.logdir + '/' + FLAGS.task_names[i] + '_dataset'
-      if not os.path.exists(cur_path):
-        os.makedirs(cur_path)
     sampler.learner_loop(env.create_environment,
                          create_agent,
                          create_optimizer)
