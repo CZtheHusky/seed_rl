@@ -19,7 +19,6 @@ import os
 import timeit
 
 from absl import flags
-from absl import logging
 import numpy as np
 from seed_rl import grpc
 from seed_rl.common import common_flags  

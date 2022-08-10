@@ -62,13 +62,15 @@ COMMAND='rm '"${LOG_DIR}"' -Rf; '"${LEARNER_BINARY}"' --logtostderr --init_check
 # COMMAND='rm '"${LOG_DIR}"' -Rf; '"${LEARNER_BINARY}"' --logtostderr --init_model '"${MODULE_PATH}"' --logdir '"${LOG_DIR}"' --sub_task '"${SUB_TASK}"' --pdb_post_mortem --num_envs='"${NUM_ENVS}"' --env_batch_size='"${ENV_BATCH_SIZE}"''
 echo $COMMAND
 tmux send-keys -t "sampler" "$COMMAND" ENTER
-
+mkdir "/outdata/${ENVIRONMENT}_dataset/${SUB_TASK}"
+mkdir "${LOG_DIR}"
 for ((id=0; id<$NUM_ACTORS; id++)); do
     tmux new-window -d -n "actor_${id}"
     COMMAND=''"${ACTOR_BINARY}"' --logtostderr --logdir '"${LOG_DIR}"' --pdb_post_mortem --sub_task '"${SUB_TASK}"' --num_envs='"${NUM_ENVS}"' --task='"${id}"' --env_batch_size='"${ENV_BATCH_SIZE}"''
     tmux send-keys -t "actor_${id}" "$COMMAND" ENTER
 done
-
+mkdir "/outdata/${ENVIRONMENT}_dataset/${SUB_TASK}"
+mkdir "${LOG_DIR}"
 tmux new-window -d -n tensorboard
 tmux send-keys -t "tensorboard" "tensorboard --logdir '"${LOG_DIR}"' --port '"${PORT}"' --bind_all" ENTER
 

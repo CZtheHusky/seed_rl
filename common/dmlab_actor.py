@@ -56,7 +56,6 @@ def actor_loop(create_env_fn, config=None, log_period=1):
   env_batch_size = FLAGS.env_batch_size
   logging.info('Starting actor loop. Task: %r. Environment batch size: %r',
                FLAGS.task, env_batch_size)
-  is_rendering_enabled = FLAGS.render and FLAGS.task == 0
   if are_summaries_enabled():
     summary_writer = tf.summary.create_file_writer(
         os.path.join(FLAGS.logdir, 'actor_{}'.format(FLAGS.task)),
@@ -82,7 +81,10 @@ def actor_loop(create_env_fn, config=None, log_period=1):
             high=np.iinfo(np.int64).max,
             size=env_batch_size,
             dtype=np.int64)
-        observation, embedding, inst_len, instruction = batched_env.reset()
+        if FLAGS.extra_input:
+          observation, embedding, inst_len, instruction = batched_env.reset()
+        else:
+          observation = batched_env.reset()
         reward = np.zeros(env_batch_size, np.float32)
         raw_reward = np.zeros(env_batch_size, np.float32)
         done = np.zeros(env_batch_size, np.bool)
@@ -111,9 +113,10 @@ def actor_loop(create_env_fn, config=None, log_period=1):
           with elapsed_inference_s_timer:
             action = client.inference(env_id, run_id, env_output, raw_reward)
           with timer_cls('actor/elapsed_env_step_s', 1000):
-            [observation, embedding, inst_len, instruction], reward, done, info = batched_env.step(action.numpy())
-          if is_rendering_enabled:
-            batched_env.render()
+            if FLAGS.extra_input:
+              [observation, embedding, inst_len, instruction], reward, done, info = batched_env.step(action.numpy())
+            else:
+              observation, reward, done, info = batched_env.step(action.numpy())
           for i in range(env_batch_size):
             episode_step[i] += 1
             episode_return[i] += reward[i]
@@ -152,11 +155,10 @@ def actor_loop(create_env_fn, config=None, log_period=1):
           # from the terminal state to the resetted state in the next loop
           # iteration (with zero rewards).
           with timer_cls('actor/elapsed_env_reset_s', 10):
-            observation, embedding, inst_len, instruction = batched_env.reset_if_done(done)
-
-          if is_rendering_enabled and done[0]:
-            batched_env.render()
-
+            if FLAGS.extra_input:
+              observation, embedding, inst_len, instruction = batched_env.reset_if_done(done)
+            else:
+              observation = batched_env.reset_if_done(done)
           actor_step += 1
       except (tf.errors.UnavailableError, tf.errors.CancelledError):
         logging.info('Inference call failed. This is normal at the end of '
