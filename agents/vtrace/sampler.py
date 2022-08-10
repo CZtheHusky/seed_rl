@@ -22,7 +22,6 @@ import os
 import time
 
 from absl import flags
-from absl import logging
 
 from seed_rl import grpc
 from seed_rl.common import common_flags  
@@ -74,14 +73,11 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
       and must return a tf.keras.optimizers.Optimizer and a
       tf.keras.optimizers.schedules.LearningRateSchedule.
   """
-  total_frames = 0
-  logging.info('Starting learner loop')
   validate_config()
   settings = utils.init_learner_multi_host(FLAGS.num_training_tpus)
   strategy, hosts, training_strategy, encode, decode = settings
   env = create_env_fn(0, FLAGS)
   FLAGS.num_action_repeats = env._num_action_repeats
-  logging.info('Action repeats: %d', env._num_action_repeats)
   parametric_action_distribution = get_parametric_distribution_for_action_space(
       env.action_space)
   if FLAGS.extra_input:
@@ -156,12 +152,6 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
     with strategy.scope():
       # ckpt.restore(FLAGS.init_checkpoint).assert_consumed()
       ckpt.restore(FLAGS.init_checkpoint)
-
-  # Logging.
-  summary_writer = tf.summary.create_file_writer(
-      FLAGS.logdir, flush_millis=20000, max_queue=10000)
-  logger = utils.ProgressLogger(summary_writer=summary_writer,
-                                starting_step=total_frames)
 
   servers = []
   # unroll_queues = []
@@ -281,36 +271,8 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
   for i, (host, inference_devices) in enumerate(hosts):
     create_host(i, host, inference_devices)
-
-  def additional_logs():
-    n_episodes = info_queue.size()
-    n_episodes -= n_episodes % 10
-    if tf.not_equal(n_episodes, 0):
-      episode_stats = info_queue.dequeue_many(n_episodes)
-      frames = [0 for i in range(len(FLAGS.task_names))]
-      ep_returns = [0 for i in range(len(FLAGS.task_names))]
-      env_counts = [0 for i in range(len(FLAGS.task_names))]
-      increment = 0
-      for (frame, ep_return, raw_return, env_id) in zip(*episode_stats):
-        logging.info('Return: %f Raw return: %f Frames: %i Env id: %i', ep_return,
-                     raw_return, frame, env_id)
-        env_counts[env_id % len(FLAGS.task_names)] += 1
-        frames[env_id % len(FLAGS.task_names)] += frame
-        increment += frame
-        ep_returns[env_id % len(FLAGS.task_names)] += ep_return
-      for idx, env_count in enumerate(env_counts):
-        if env_count != 0:
-          tf.summary.scalar('subtasks/' + FLAGS.task_names[idx] + '/episode_num_frames', frames[idx] / env_count)
-          tf.summary.scalar('subtasks/' + FLAGS.task_names[idx] + '/episode_return', ep_returns[idx] / env_count)
-      logger.step_cnt.assign_add(increment)
-
-    
-
-
-  logger.start(additional_logs)
   # Execute learning.
   while True:
     continue
-  logger.shutdown()
   for server in servers:
     server.shutdown()

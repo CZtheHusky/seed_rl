@@ -34,7 +34,6 @@ import math
 import time
 
 from absl import flags
-from absl import logging
 from seed_rl import grpc
 from seed_rl.common import common_flags  
 from seed_rl.common import utils
@@ -447,8 +446,6 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
       and must return a tf.keras.optimizers.Optimizer and a
       tf.keras.optimizers.schedules.LearningRateSchedule.
   """
-  total_env_frames = 0
-  logging.info('Starting learner loop')
   validate_config()
   settings = utils.init_learner(FLAGS.num_training_tpus)
   strategy, inference_devices, training_strategy, encode, decode = settings
@@ -591,9 +588,6 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
   agent_output_specs = tf.nest.map_structure(
       lambda t: tf.TensorSpec(t.shape[1:], t.dtype), initial_agent_output)
-  # Logging.
-  summary_writer = tf.summary.create_file_writer(
-      FLAGS.logdir, flush_millis=20000, max_queue=1000)
 
   # Setup checkpointing and restore checkpoint.
 
@@ -797,92 +791,8 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
   server.start()
 
   # Execute learning and track performance.
-  with summary_writer.as_default(), \
-    concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-    log_future = executor.submit(lambda: None)  # No-op future.
-    tf.summary.experimental.set_step(iterations * iter_frame_ratio)
-    # dataset = create_dataset(unroll_queue, replay_buffer, training_strategy,
-    #                          FLAGS.batch_size, FLAGS.priority_exponent, encode)
-    # it = iter(dataset)
-
-    last_num_env_frames = total_env_frames
-    last_log_time = time.time()
-    # max_gradient_norm_before_clip = 0.
-    while True:
-      num_env_frames = total_env_frames
-      tf.summary.experimental.set_step(total_env_frames)
-
-      # if iterations.numpy() % FLAGS.update_target_every_n_step == 0:
-      #   update_target_agent()
-
-      # # Save checkpoint.
-      current_time = time.time()
-      # if current_time - last_ckpt_time >= FLAGS.save_checkpoint_secs:
-      #   manager.save()
-      #   last_ckpt_time = current_time
-
-      def log(total_env_frames):
-        """Logs environment summaries."""
-        summary_writer.set_as_default()
-        n_episodes = info_queue.size()
-        n_episodes -= n_episodes % 100
-        if tf.not_equal(n_episodes, 0):
-          tf.summary.experimental.set_step(total_env_frames)
-          episode_info = info_queue.dequeue_many(n_episodes)
-          training_ep_frames = 0
-          training_ep_return = 0
-          eval_ep_frames = 0
-          eval_ep_return = 0
-          training_num = 0
-          eval_num = 0
-          for n, r, _, env_id in zip(*episode_info):
-            is_training = is_training_env(env_id)
-            logging.info(
-                'Return: %f Frames: %i Env id: %i (%s) Iteration: %i',
-                r, n, env_id,
-                'training' if is_training else 'eval',
-                iterations.numpy())
-            if is_training:
-              training_ep_frames += n
-              training_ep_return += r
-              training_num += 1
-            else:
-              eval_ep_frames += n
-              eval_ep_return += r
-              eval_num += 1
-          total_env_frames += training_ep_frames
-          total_env_frames += eval_ep_frames
-          tf.summary.scalar('eval/avg_episode_return', 0 if eval_num == 0 else eval_ep_return / eval_num)
-          tf.summary.scalar('eval/avg_episode_frames', 0 if eval_num == 0 else eval_ep_frames / eval_num)
-          tf.summary.scalar('train/avg_episode_return', 0 if training_num == 0 else training_ep_return / training_num)
-          tf.summary.scalar('train/avg_episode_frames', 0 if training_num == 0 else training_ep_frames / training_num)
-      log_future.result()  # Raise exception if any occurred in logging.
-      log_future = executor.submit(log, total_env_frames)
-
-      # _, priorities, indices, gradient_norm = minimize(it)
-
-      # replay_buffer.update_priorities(indices, priorities)
-      # Max of gradient norms (before clipping) since last tf.summary export.
-      # max_gradient_norm_before_clip = max(gradient_norm.numpy(),
-      #                                     max_gradient_norm_before_clip)
-      if current_time - last_log_time >= 60:
-        df = tf.cast(num_env_frames - last_num_env_frames, tf.float32)
-        dt = time.time() - last_log_time
-        tf.summary.scalar('num_environment_frames/sec (actors)', df / dt)
-        tf.summary.scalar('num_environment_frames/sec (learner)',
-                          df / dt * FLAGS.replay_ratio)
-        last_num_env_frames = num_env_frames
-        # tf.summary.scalar('learning_rate', learning_rate_fn(iterations))
-        # tf.summary.scalar('replay_buffer_num_inserted',
-        #                   replay_buffer.num_inserted)
-        # tf.summary.scalar('unroll_queue_size', unroll_queue.size())
-
-        # last_num_env_frames, last_log_time = num_env_frames, time.time()
-        # tf.summary.histogram('updated_priorities', priorities)
-        # tf.summary.scalar('max_gradient_norm_before_clip',
-        #                   max_gradient_norm_before_clip)
-        # max_gradient_norm_before_clip = 0.
-
+  while True:
+    continue
   # manager.save()
   server.shutdown()
   # unroll_queue.close()
