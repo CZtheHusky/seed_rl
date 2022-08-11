@@ -279,10 +279,7 @@ DMLAB_26 = [
 ]
 
 psychlab = [
-    'arbitrary_visuomotor_mapping',  
-    'multiple_object_tracking',  
-    'sequential_comparison',    
-    'continuous_recognition',        
+    'multiple_object_tracking',       
     'glass_pattern_detection',  
     'motion_discrimination_easy',     
     'odd_one_out',               
@@ -294,7 +291,6 @@ psychlab = [
     'landoltC_identification',  
     'multiple_object_tracking_easy',  
     'ready_set_go',              
-    'visual_search',
 ]
 
 psychlab_memory = [
