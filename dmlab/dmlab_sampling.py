@@ -102,6 +102,8 @@ def main(argv):
     FLAGS.task_names = [FLAGS.sub_task]
   print(FLAGS.task_names)
   print(FLAGS.sub_task)
+  with open(FLAGS.logdir + '/' + '0_0_readme.json', 'w') as file:
+    file.write('pos')
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
   if FLAGS.run_mode == 'actor':
