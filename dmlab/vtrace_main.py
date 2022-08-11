@@ -33,8 +33,8 @@ import os
 FLAGS = flags.FLAGS
 
 # Optimizer settings.
-flags.DEFINE_float('learning_rate', 0.000398313170083425, 'Learning rate.')
-flags.DEFINE_float('adam_epsilon', .00000000003125, 'Adam epsilon.')
+flags.DEFINE_float('learning_rate', 0.00022587896096859582, 'Learning rate.')
+flags.DEFINE_float('adam_epsilon', .000000003125, 'Adam epsilon.')
 flags.DEFINE_float('rms_epsilon', .1, 'RMS epsilon.')
 flags.DEFINE_float('rms_momentum', 0., 'RMS momentum.')
 flags.DEFINE_float('rms_decay', .99, 'RMS decay.')
@@ -47,7 +47,7 @@ flags.DEFINE_bool('extra_input', False, 'with or without the string input')
 # Training.
 flags.DEFINE_integer('save_checkpoint_secs', 900,
                      'Checkpoint save period in seconds.')
-flags.DEFINE_integer('total_environment_frames', int(1e10),
+flags.DEFINE_integer('total_environment_frames', int(5e9),
                      'Total environment frames to train for.')
 flags.DEFINE_integer('batch_size', 32, 'Batch size for training.')
 flags.DEFINE_integer('inference_batch_size', -1,
@@ -58,7 +58,7 @@ flags.DEFINE_string('init_checkpoint', None,
                     'Path to the checkpoint used to initialize the agent.')
 
 # Loss settings.
-flags.DEFINE_float('entropy_cost', 0.0013043623417080615, 'Entropy cost/multiplier.')
+flags.DEFINE_float('entropy_cost', 0.0009705614902108625, 'Entropy cost/multiplier.')
 flags.DEFINE_float('target_entropy', None, 'If not None, the entropy cost is '
                    'automatically adjusted to reach the desired entropy level.')
 flags.DEFINE_float('entropy_cost_adjustment_speed', 10., 'Controls how fast '

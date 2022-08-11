@@ -42,7 +42,7 @@ import tensorflow as tf
 
 flags.DEFINE_integer('save_checkpoint_secs', 900,
                      'Checkpoint save period in seconds.')
-flags.DEFINE_integer('total_environment_frames', int(1e10),
+flags.DEFINE_integer('total_environment_frames', int(1e9),
                      'Total environment frames to train for.')
 flags.DEFINE_integer('batch_size', 64, 'Batch size for training.')
 flags.DEFINE_float('replay_ratio', 1.5,
@@ -55,10 +55,10 @@ flags.DEFINE_integer('inference_batch_size', -1,
 flags.DEFINE_integer('unroll_length', 100, 'Unroll length in agent steps.')
 flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')
 flags.DEFINE_integer('update_target_every_n_step',
-                     400,
+                     100,
                      'Update the target network at this frequency (expressed '
                      'in number of training steps)')
-flags.DEFINE_integer('replay_buffer_size', int(1e3),
+flags.DEFINE_integer('replay_buffer_size', int(1e2),
                      'Size of the replay buffer (in number of unrolls stored).')
 flags.DEFINE_integer('replay_buffer_min_size', 10,
                      'Learning only starts when there is at least this number '
@@ -84,7 +84,7 @@ flags.DEFINE_float('value_function_rescaling_epsilon', 1e-3,
 flags.DEFINE_integer('n_steps', 5,
                      'n-step returns: how far ahead we look for computing the '
                      'Bellman targets.')
-flags.DEFINE_float('discounting', .997, 'Discounting factor.')
+flags.DEFINE_float('discounting', .99, 'Discounting factor.')
 
 # Eval settings
 flags.DEFINE_float('eval_epsilon', 1e-3,

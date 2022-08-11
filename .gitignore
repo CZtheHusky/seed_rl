@@ -140,3 +140,4 @@ docker/.vector_cache/glove.twitter.27B.25d.txt.pt
 /procgen_experts
 /dmlab_experts
 /dmlab_ckpt
+/sync

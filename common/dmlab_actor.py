@@ -22,7 +22,6 @@ from absl import logging
 import numpy as np
 from seed_rl import grpc
 from seed_rl.common import common_flags  
-from seed_rl.common import env_wrappers
 from seed_rl.common import profiling
 from seed_rl.common import utils
 import tensorflow as tf
@@ -42,7 +41,7 @@ def are_summaries_enabled():
   return FLAGS.task < FLAGS.num_actors_with_summaries
 
 
-def actor_loop(create_env_fn, config=None, log_period=1):
+def actor_loop(create_env_fn, config=None, log_period=30):
   """Main actor loop.
 
   Args:
@@ -72,8 +71,14 @@ def actor_loop(create_env_fn, config=None, log_period=1):
         # Client to communicate with the learner.
         client = grpc.Client(FLAGS.server_address)
         utils.update_config(config, client)
-        batched_env = env_wrappers.BatchedEnvironment(
-            create_env_fn, env_batch_size, FLAGS.task * env_batch_size, config)
+        if FLAGS.extra_input:
+          from seed_rl.common import env_wrappers_extra
+          batched_env = env_wrappers_extra.BatchedEnvironment(
+              create_env_fn, env_batch_size, FLAGS.task * env_batch_size, config)
+        else:
+          from seed_rl.common import env_wrappers
+          batched_env = env_wrappers.BatchedEnvironment(
+              create_env_fn, env_batch_size, FLAGS.task * env_batch_size, config)
 
         env_id = batched_env.env_ids
         run_id = np.random.randint(
@@ -82,7 +87,7 @@ def actor_loop(create_env_fn, config=None, log_period=1):
             size=env_batch_size,
             dtype=np.int64)
         if FLAGS.extra_input:
-          observation, embedding, inst_len, instruction = batched_env.reset()
+          observation, instruction, embedding, inst_len = batched_env.reset()
         else:
           observation = batched_env.reset()
         reward = np.zeros(env_batch_size, np.float32)
@@ -114,7 +119,12 @@ def actor_loop(create_env_fn, config=None, log_period=1):
             action = client.inference(env_id, run_id, env_output, raw_reward)
           with timer_cls('actor/elapsed_env_step_s', 1000):
             if FLAGS.extra_input:
-              [observation, embedding, inst_len, instruction], reward, done, info = batched_env.step(action.numpy())
+              [observation, instruction, embedding, inst_len], reward, done, info = batched_env.step(action.numpy())
+              # print(embedding)
+              # print(instruction)
+              # print(reward)
+              # print(done)
+              # print(action.numpy())
             else:
               observation, reward, done, info = batched_env.step(action.numpy())
           for i in range(env_batch_size):
@@ -156,7 +166,7 @@ def actor_loop(create_env_fn, config=None, log_period=1):
           # iteration (with zero rewards).
           with timer_cls('actor/elapsed_env_reset_s', 10):
             if FLAGS.extra_input:
-              observation, embedding, inst_len, instruction = batched_env.reset_if_done(done)
+              observation, instruction, embedding, inst_len = batched_env.reset_if_done(done)
             else:
               observation = batched_env.reset_if_done(done)
           actor_step += 1

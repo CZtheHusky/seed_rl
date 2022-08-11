@@ -19,7 +19,7 @@ import os
 
 from absl import flags
 from absl import logging
-
+import time
 import gym
 import numpy as np
 from seed_rl.common import common_flags
@@ -107,7 +107,6 @@ class LevelCache(object):
             tf.io.gfile.makedirs(os.path.dirname(path))
             tf.io.gfile.copy(pk3_path, path)
 
-
 class DmLab_extra(gym.Env):
     """DeepMind Lab wrapper."""
 
@@ -144,8 +143,6 @@ class DmLab_extra(gym.Env):
           high=1000,
           shape=(10, 25),
           dtype=np.float32)
-      self.glove_vectors = GloVe(name="twitter.27B", dim=25)
-      self.tokenizer = get_tokenizer("basic_english")
         
 
     def _observation(self):
@@ -155,39 +152,29 @@ class DmLab_extra(gym.Env):
 
     def reset(self):
         self._env.reset(seed=self._random_state.randint(0, 2 ** 31 - 1))
-        observation, instruction = self._observation()
-        embedding, inst_len = self.embed(instruction)
-        return [observation, embedding, inst_len, instruction]
+        return self._observation()
 
     def step(self, action):
         raw_action = np.array(self._action_set[action], np.intc)
-        reward = self._env.step(raw_action, num_steps=self._num_action_repeats)
+        try:
+            reward = self._env.step(raw_action, num_steps=self._num_action_repeats)
+        except Exception as e:
+            print(e.__class__.__name__, e)
+            observation = None
+            instruction = None
+            reward = np.array(0.)
+            done = np.array(True)
+            return [observation, instruction], reward, done, {}
         done = not self._env.is_running()
         if done:
           observation = None
-          embedding = None
           instruction = None
-          inst_len = 0
         else:
           observation, instruction = self._observation()
-          embedding, inst_len = self.embed(instruction)
-        return [observation, embedding, inst_len, instruction], reward, done, {}
+        return [observation, instruction], reward, done, {}
 
     def close(self):
         self._env.close()
-
-    def embed(self, instruction):
-        with torch.no_grad():
-            tokens = self.tokenizer(str(instruction))
-            if len(tokens) == 0:
-                embedding = np.zeros((1, 25), dtype=np.float32)
-                inst_len = 0
-            else:
-                embedding = self.glove_vectors.get_vecs_by_tokens(tokens, True)
-                inst_len = len(embedding) - 1
-                embedding = np.array(embedding, dtype=np.float32)
-        embedding = np.pad(embedding, ((0, 10 - embedding.shape[0]), (0, 0)), 'constant')
-        return embedding, inst_len
 
 
 class DmLab(gym.Env):
@@ -250,6 +237,7 @@ def create_environment(task, config):
         cur_game = games.tasksets_path[taskset[0]] + config.sub_task
         break
   if config.extra_input:
+    logging.info('creating DmLab_extra')
     env = DmLab_extra(
         cur_game,
         seed=task,
@@ -260,6 +248,7 @@ def create_environment(task, config):
             'logLevel': 'WARN',
         })
   else:
+    logging.info('creating DmLab')
     env = DmLab(
         cur_game,
         seed=task,

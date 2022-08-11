@@ -14,12 +14,15 @@
 
 
 """Environment wrappers."""
-
+import time
 from absl import flags
 import gym
 import numpy as np
 import tensorflow as tf
-
+import torch
+import torch.nn
+from torchtext.vocab import GloVe
+from torchtext.data.utils import get_tokenizer
 
 
 FLAGS = flags.FLAGS
@@ -150,6 +153,8 @@ class BatchedEnvironment:
     self._envs = [create_env_fn(id, config) for id in env_ids]
     self._env_ids = np.array(env_ids, np.int32)
     self._obs = None
+    self.glove_vectors = GloVe(name="twitter.27B", dim=25)
+    self.tokenizer = get_tokenizer("basic_english")
 
   @property
   def env_ids(self):
@@ -173,6 +178,19 @@ class BatchedEnvironment:
     """
     return tf.nest.map_structure(lambda *args: np.array(args), *self._obs)
 
+  def embed(self, instruction):
+      with torch.no_grad():
+          tokens = self.tokenizer(str(instruction))
+          if len(tokens) == 0:
+              embedding = np.zeros((1, 25), dtype=np.float32)
+              inst_len = 0
+          else:
+              embedding = self.glove_vectors.get_vecs_by_tokens(tokens, True)
+              inst_len = len(embedding) - 1
+              embedding = np.array(embedding, dtype=np.float32)
+      embedding = np.pad(embedding, ((0, 10 - embedding.shape[0]), (0, 0)), 'constant')
+      return embedding, inst_len
+
   def step(self, action_batch):
     """Does one step for all batched environments sequentially."""
     num_envs = self._batch_size
@@ -180,13 +198,19 @@ class BatchedEnvironment:
     dones = np.zeros(num_envs, np.bool)
     infos = [None] * num_envs
     for i in range(num_envs):
-      self._obs[i], rewards[i], dones[i], infos[i] = self._envs[i].step(
-          action_batch[i])
+      self._obs[i], rewards[i], dones[i], infos[i] = self._envs[i].step(action_batch[i])
+      embedding, inst_len = self.embed(self._obs[i][1])
+      self._obs[i].append(embedding)
+      self._obs[i].append(inst_len)
     return self._mapped_obs, rewards, dones, infos
 
   def reset(self):
     """Reset all environments."""
     observations = [env.reset() for env in self._envs]
+    for obs in observations:
+      embedding, inst_len = self.embed(obs[1])
+      obs.append(embedding)
+      obs.append(inst_len)
     self._obs = observations
     return self._mapped_obs
 
@@ -203,8 +227,11 @@ class BatchedEnvironment:
     assert self._obs is not None, 'reset_if_done() called before reset()'
     for i in range(len(self._envs)):
       if done[i]:
+        # self._obs[i] = self.envs[i].reset()
         self._obs[i] = self.envs[i].reset()
-
+        embedding, inst_len = self.embed(self._obs[i][1])
+        self._obs[i].append(embedding)
+        self._obs[i].append(inst_len)
     return self._mapped_obs
 
   def render(self, mode='human', **kwargs):

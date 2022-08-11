@@ -56,7 +56,6 @@ def actor_loop(create_env_fn, config=None, log_period=1):
   env_batch_size = FLAGS.env_batch_size
   logging.info('Starting actor loop. Task: %r. Environment batch size: %r',
                FLAGS.task, env_batch_size)
-  is_rendering_enabled = FLAGS.render and FLAGS.task == 0
   if are_summaries_enabled():
     summary_writer = tf.summary.create_file_writer(
         os.path.join(FLAGS.logdir, 'actor_{}'.format(FLAGS.task)),
@@ -103,45 +102,18 @@ def actor_loop(create_env_fn, config=None, log_period=1):
         while True:
           tf.summary.experimental.set_step(actor_step)
           env_output = utils.EnvOutput(reward, done, observation,
-                                       abandoned, episode_step)
+                                      abandoned, episode_step)
           with elapsed_inference_s_timer:
             action = client.inference(env_id, run_id, env_output, raw_reward)
           with timer_cls('actor/elapsed_env_step_s', 1000):
             observation, reward, done, info = batched_env.step(action.numpy())
-          if is_rendering_enabled:
-            batched_env.render()
           for i in range(env_batch_size):
             episode_step[i] += 1
             episode_return[i] += reward[i]
             raw_reward[i] = float((info[i] or {}).get('score_reward',
                                                       reward[i]))
             episode_raw_return[i] += raw_reward[i]
-            # If the info dict contains an entry abandoned=True and the
-            # episode was ended (done=True), then we need to specially handle
-            # the final transition as per the explanations below.
-            abandoned[i] = (info[i] or {}).get('abandoned', False)
-            assert done[i] if abandoned[i] else True
             if done[i]:
-              # If the episode was abandoned, we need to report the final
-              # transition including the final observation as if the episode has
-              # not terminated yet. This way, learning algorithms can use the
-              # transition for learning.
-              if abandoned[i]:
-                # We do not signal yet that the episode was abandoned. This will
-                # happen for the transition from the terminal state to the
-                # resetted state.
-                assert env_batch_size == 1 and i == 0, (
-                    'Mixing of batched and non-batched inference calls is not '
-                    'yet supported')
-                env_output = utils.EnvOutput(reward,
-                                             np.array([False]), observation,
-                                             np.array([False]), episode_step)
-                with elapsed_inference_s_timer:
-                  # action is ignored
-                  client.inference(env_id, run_id, env_output, raw_reward)
-                reward[i] = 0.0
-                raw_reward[i] = 0.0
-
               # Periodically log statistics.
               current_time = timeit.default_timer()
               episode_step_sum += episode_step[i]
@@ -173,11 +145,7 @@ def actor_loop(create_env_fn, config=None, log_period=1):
           # from the terminal state to the resetted state in the next loop
           # iteration (with zero rewards).
           with timer_cls('actor/elapsed_env_reset_s', 10):
-            observation = batched_env.reset_if_done(done)
-
-          if is_rendering_enabled and done[0]:
-            batched_env.render()
-
+              observation = batched_env.reset_if_done(done)
           actor_step += 1
       except (tf.errors.UnavailableError, tf.errors.CancelledError):
         logging.info('Inference call failed. This is normal at the end of '

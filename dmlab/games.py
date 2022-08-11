@@ -156,11 +156,6 @@ ALL_GAMES = frozenset([
     'explore_object_rewards_many',
 ])
 
-test_set = [
-    'rooms_exploit_deferred_effects_test',
-    'rooms_collect_good_objects_test',
-]
-
 rooms = [
     'rooms_collect_good_objects_train',
     'rooms_exploit_deferred_effects_train',
