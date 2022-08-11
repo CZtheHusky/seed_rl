@@ -229,7 +229,7 @@ class DmLab(gym.Env):
 
 def create_environment(task, config):
   cur_game = None
-  if games.tasksets_path.get(config.sub_task, None):
+  if games.tasksets_path.get(config.sub_task, -1) != -1:
     cur_game = games.tasksets_path[config.sub_task] + config.task_names[task % len(config.task_names)]
   else:
     for taskset in games.tasksets.items():
