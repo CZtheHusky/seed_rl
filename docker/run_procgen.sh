@@ -69,6 +69,6 @@ for ((id=0; id<$NUM_ACTORS; id++)); do
 done
 
 tmux new-window -d -n tensorboard
-tmux send-keys -t "tensorboard" "tensorboard --logdir '"${LOG_DIR}"' --port '"${PORT}"' --bind_all" ENTER
+tmux send-keys -t "tensorboard" "tensorboard --logdir '"/outdata/logs/seed_rl/${ENVIRONMENT}_${AGENT}/${SUB_TASK}"' --port '"${PORT}"' --bind_all" ENTER
 
 tmux attach -t seed_rl
