@@ -326,7 +326,7 @@ others = [
     'stairway_to_melon',
 ]
 
-It = [
+lt = [
     'lt_chasm',
     'lt_hallway_slope',
     'lt_horseshoe_color',
@@ -368,7 +368,7 @@ tasksets = {
     'fast_mapping': fast_mapping,
     'natlab': natlab,
     'skymaze': skymaze,
-    'It': It,
+    'lt': lt,
     'nav_maze_static': nav_maze_static,
     'nav_maze_random': nav_maze_random,
     'left_over': left_over,
@@ -390,7 +390,7 @@ tasksets_path = {
     'fast_mapping': 'contributed/fast_mapping/',
     'natlab': 'contributed/dmlab30/',
     'skymaze': 'contributed/dmlab30/',
-    'It': '',
+    'lt': '',
     'nav_maze_random': '',
     'nav_maze_static': '',
     'left_over': '',
