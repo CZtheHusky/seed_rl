@@ -164,8 +164,6 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
   settings = utils.init_learner_multi_host(FLAGS.num_training_tpus)
   strategy, hosts, training_strategy, encode, decode = settings
   env = create_env_fn(0, FLAGS)
-  FLAGS.num_action_repeats = env._num_action_repeats
-  logging.info('Action repeats: %d', env._num_action_repeats)
   parametric_action_distribution = get_parametric_distribution_for_action_space(
       env.action_space)
   if FLAGS.extra_input:
