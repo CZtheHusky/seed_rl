@@ -33,7 +33,7 @@ import os
 FLAGS = flags.FLAGS
 
 # Optimizer settings.
-flags.DEFINE_float('learning_rate', 0.00031866995608948655, 'Learning rate.')
+flags.DEFINE_float('learning_rate', 0.0031866995608948655, 'Learning rate.')
 flags.DEFINE_float('adam_epsilon', .00000000003125, 'Adam epsilon.')
 flags.DEFINE_float('rms_epsilon', .1, 'RMS epsilon.')
 flags.DEFINE_float('rms_momentum', 0., 'RMS momentum.')
@@ -70,7 +70,7 @@ flags.DEFINE_float('lambda_', .95, 'Lambda.')
 flags.DEFINE_float('max_abs_reward', 0.,
                    'Maximum absolute reward when calculating loss.'
                    'Use 0. to disable clipping.')
-flags.DEFINE_float('clip_norm', 0, 'We clip gradient norm to this value.')
+flags.DEFINE_float('clip_norm', 40, 'We clip gradient norm to this value.')
 
 # Logging
 flags.DEFINE_integer('log_batch_frequency', 100, 'We average that many batches '
@@ -98,7 +98,9 @@ def create_optimizer(final_iteration):
 
 def main(argv):
   FLAGS.num_action_repeats = 4
-  if FLAGS.sub_task == 'language' or FLAGS.sub_task in games.language or FLAGS.sub_task == 'dmlab30':
+  if FLAGS.sub_task == 'language' or FLAGS.sub_task == 'dmlab30' or FLAGS.sub_task == 'fast_mapping':
+    FLAGS.extra_input = True
+  if FLAGS.sub_task in games.language or FLAGS.sub_task in games.fast_mapping:
     FLAGS.extra_input = True
   FLAGS.action_set = env.DEFAULT_ACTION_SET
   if games.tasksets.get(FLAGS.sub_task, None):

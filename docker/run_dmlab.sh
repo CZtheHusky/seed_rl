@@ -21,6 +21,7 @@ die () {
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $DIR
 cp -r /outdata/seed_rl /
+cp -r /outdata/lab/game_scripts/ /usr/local/lib/python3.6/dist-packages/deepmind_lab/baselab
 ENVIRONMENT=$1
 AGENT=$2
 NUM_ACTORS=$3
