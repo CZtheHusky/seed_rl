@@ -1,3 +1,4 @@
+from fileinput import filename
 import os
 import json
 import argparse
@@ -14,7 +15,7 @@ def main(args):
     for file in file_list:
         if os.path.isfile(os.path.join(parent, file)):
             fileName, suffix = file.split('.')
-            if suffix == 'json':
+            if suffix == 'json' and fileName != '0_0_readme':
                 print(file)
                 with open(os.path.join(parent, file), 'r') as f:
                     content = json.load(f)
