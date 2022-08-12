@@ -51,7 +51,7 @@ flags.DEFINE_integer('save_checkpoint_secs', 900,
 flags.DEFINE_integer('total_environment_frames', int(1e9),
                      'Total environment frames to train for.')
 flags.DEFINE_integer('batch_size', 32, 'Batch size for training.')
-flags.DEFINE_integer('inference_batch_size', 4,
+flags.DEFINE_integer('inference_batch_size', 8,
                      'Batch size for inference, -1 for auto-tune.')
 flags.DEFINE_integer('unroll_length', 100, 'Unroll length in agent steps.')
 flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')
@@ -79,8 +79,13 @@ flags.DEFINE_integer('log_episode_frequency', 100, 'We average that many episode
                      ' before logging average episode return and length.')
 
 def create_agent(action_space, unused_env_observation_space,
-                 unused_parametric_action_distribution):
-  return networks.ImpalaDeep(action_space.n)
+                 unused_parametric_action_distribution, extra_input):
+  if extra_input:
+    print('creating ImpalaDeep_extra')
+    return networks.ImpalaDeep_extra(action_space.n)
+  else:
+    print('creating ImpalaDeep')
+    return networks.ImpalaDeep(action_space.n)
 
 
 def create_optimizer(final_iteration):

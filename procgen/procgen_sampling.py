@@ -21,9 +21,9 @@ Actor and learner are in the same binary so that all flags are shared.
 
 from absl import app
 from absl import flags
-from seed_rl.agents.r2d2 import sampler
+from seed_rl.agents.vtrace import sampler
 from seed_rl.procgen import env
-from seed_rl.procgen import networks
+from seed_rl.procgen import vtrace_networks
 from seed_rl.common import procgen_sampler
 from seed_rl.common import common_flags  
 import tensorflow as tf
@@ -38,8 +38,8 @@ flags.DEFINE_float('adam_epsilon', 1e-3, 'Adam epsilon.')
 flags.DEFINE_list('task_names', [], 'names of tasks')
 flags.DEFINE_float('reward_threshold', 0., 'reward threshold for sampling')
 flags.DEFINE_string('sub_task', 'all', 'sub tasks, i.e. dmlab30, dmlab26, all, others')
-flags.DEFINE_string('init_checkpoint', None,
-                    'Path to the checkpoint used to initialize the agent.')
+flags.DEFINE_string('init_checkpoint', None, 'Path to the checkpoint used to initialize the agent.')
+flags.DEFINE_bool('extra_input', False, 'with or without the string input')
 
 flags.DEFINE_integer('save_checkpoint_secs', 900,
                      'Checkpoint save period in seconds.')
@@ -92,17 +92,21 @@ flags.DEFINE_float('eval_epsilon', 1e-3,
                    'Epsilon (as in epsilon-greedy) used for evaluation.')
 
 
-def create_agent(env_output_specs, num_actions):
-  return networks.DuelingLSTMDQNNet(
-      num_actions, env_output_specs.observation.shape)
+# def create_agent(env_output_specs, num_actions):
+#   return networks.DuelingLSTMDQNNet(
+#       num_actions, env_output_specs.observation.shape)
 
+def create_agent(action_space, unused_env_observation_space,
+                 unused_parametric_action_distribution, extra_input):
+    print('creating ImpalaDeep')
+    return vtrace_networks.ImpalaDeep(action_space.n)
 
 def create_optimizer(final_iteration):
   learning_rate_fn = lambda iteration: FLAGS.learning_rate
   # learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
   #   FLAGS.learning_rate, final_iteration, 0)
-  optimizer = tf.keras.optimizers.Adam(FLAGS.learning_rate,
-                                       epsilon=FLAGS.adam_epsilon)
+  # optimizer = tf.keras.optimizers.Adam(FLAGS.learning_rate, epsilon=FLAGS.adam_epsilon)
+  optimizer = tf.keras.optimizers.Adam(learning_rate_fn, beta_1=0)
   return optimizer, learning_rate_fn
 
 def main(argv):

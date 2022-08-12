@@ -77,7 +77,6 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
   settings = utils.init_learner_multi_host(FLAGS.num_training_tpus)
   strategy, hosts, training_strategy, encode, decode = settings
   env = create_env_fn(0, FLAGS)
-  FLAGS.num_action_repeats = env._num_action_repeats
   parametric_action_distribution = get_parametric_distribution_for_action_space(
       env.action_space)
   if FLAGS.extra_input:
@@ -104,7 +103,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
   # Initialize agent and variables.
   agent = create_agent_fn(env.action_space, env.observation_space,
-                          parametric_action_distribution)
+                          parametric_action_distribution, FLAGS.extra_input)
   initial_agent_state = agent.initial_state(1)
   agent_state_specs = tf.nest.map_structure(
       lambda t: tf.TensorSpec(t.shape[1:], t.dtype), initial_agent_state)
@@ -120,16 +119,16 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
     initial_agent_output, _ = create_variables(*input_, initial_agent_state)
 
-    if not hasattr(agent, 'entropy_cost'):
-      mul = FLAGS.entropy_cost_adjustment_speed
-      agent.entropy_cost_param = tf.Variable(
-          tf.math.log(FLAGS.entropy_cost) / mul,
-          # Without the constraint, the param gradient may get rounded to 0
-          # for very small values.
-          constraint=lambda v: tf.clip_by_value(v, -20 / mul, 20 / mul),
-          trainable=True,
-          dtype=tf.float32)
-      agent.entropy_cost = lambda: tf.exp(mul * agent.entropy_cost_param)
+    # if not hasattr(agent, 'entropy_cost'):
+    #   mul = FLAGS.entropy_cost_adjustment_speed
+    #   agent.entropy_cost_param = tf.Variable(
+    #       tf.math.log(FLAGS.entropy_cost) / mul,
+    #       # Without the constraint, the param gradient may get rounded to 0
+    #       # for very small values.
+    #       constraint=lambda v: tf.clip_by_value(v, -20 / mul, 20 / mul),
+    #       trainable=True,
+    #       dtype=tf.float32)
+    #   agent.entropy_cost = lambda: tf.exp(mul * agent.entropy_cost_param)
     # Create optimizer.
     iter_frame_ratio = (
         FLAGS.batch_size * FLAGS.unroll_length * FLAGS.num_action_repeats)
