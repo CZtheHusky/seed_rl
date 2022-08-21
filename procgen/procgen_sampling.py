@@ -51,7 +51,7 @@ flags.DEFINE_float('replay_ratio', 1.5,
                    'used for training. '
                    'The default of 1.5 corresponds to an interpretation of the '
                    'R2D2 paper using the end of section 2.3.')
-flags.DEFINE_integer('inference_batch_size', 8,
+flags.DEFINE_integer('inference_batch_size', 4,
                      'Batch size for inference, -1 for auto-tune.')
 flags.DEFINE_integer('unroll_length', 100, 'Unroll length in agent steps.')
 flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')
@@ -120,7 +120,7 @@ def main(argv):
   print(FLAGS.sub_task)
   print('subtask names')
   print(FLAGS.task_names)
-  with open(FLAGS.logdir + '/' + '0_0_readme.json', 'w') as file:
+  with open(FLAGS.logdir + '/' + '0_0_summary.json', 'w') as file:
     file.write('pos')
   FLAGS.reward_threshold = env.games[FLAGS.sub_task][2]
   if FLAGS.run_mode == 'actor':

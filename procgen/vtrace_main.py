@@ -32,7 +32,7 @@ import os
 FLAGS = flags.FLAGS
 
 # Optimizer settings.
-flags.DEFINE_float('learning_rate', 0.00031866995608948655, 'Learning rate.')
+flags.DEFINE_float('learning_rate', 0.00051866995608948655, 'Learning rate.')
 flags.DEFINE_float('adam_epsilon', .000000003125, 'Adam epsilon.')
 flags.DEFINE_float('rms_epsilon', .1, 'RMS epsilon.')
 flags.DEFINE_float('rms_momentum', 0., 'RMS momentum.')
@@ -53,11 +53,12 @@ flags.DEFINE_integer('inference_batch_size', -1,
                      'Batch size for inference, -1 for auto-tune.')
 flags.DEFINE_integer('unroll_length', 100, 'Unroll length in 1agent steps.')
 flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')
-flags.DEFINE_string('init_checkpoint', None,
-                    'Path to the checkpoint used to initialize the agent.')
+flags.DEFINE_string('init_checkpoint', None, 'Path to the checkpoint used to initialize the agent.')
+# flags.DEFINE_string('init_checkpoint', '../procgen_ckpt/fruitbot/ckpt-11', 'Path to the checkpoint used to initialize the agent.')
+
 
 # Loss settings.
-flags.DEFINE_float('entropy_cost', 0.0033391318945337044, 'Entropy cost/multiplier.')
+flags.DEFINE_float('entropy_cost', 0.033391318945337044, 'Entropy cost/multiplier.')
 flags.DEFINE_float('target_entropy', None, 'If not None, the entropy cost is '
                    'automatically adjusted to reach the desired entropy level.')
 flags.DEFINE_float('entropy_cost_adjustment_speed', 10., 'Controls how fast '

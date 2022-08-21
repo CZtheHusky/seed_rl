@@ -289,7 +289,9 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
       FLAGS.logdir, flush_millis=20000, max_queue=1000)
   logger = utils.ProgressLogger(summary_writer=summary_writer,
                                 starting_step=iterations * iter_frame_ratio)
-
+  with open(file=os.path.join(FLAGS.logdir, 'configs.yaml'), mode='w') as f:
+    pass
+  FLAGS.append_flags_into_file(os.path.join(FLAGS.logdir, 'configs.yaml'))
   servers = []
   unroll_queues = []
   info_specs = (

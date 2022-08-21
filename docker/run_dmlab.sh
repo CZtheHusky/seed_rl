@@ -63,6 +63,9 @@ mkdir "${LOG_DIR}"
 # COMMAND='rm '"${LOG_DIR}"' -Rf; '"${LEARNER_BINARY}"' --logtostderr --init_checkpoint '"${CKPT_PATH}"' --logdir '"${LOG_DIR}"' --sub_task '"${SUB_TASK}"' --pdb_post_mortem --num_envs='"${NUM_ENVS}"' --env_batch_size='"${ENV_BATCH_SIZE}"''
 COMMAND='rm '"${LOG_DIR}"' -Rf; '"${LEARNER_BINARY}"' --logtostderr --logdir '"${LOG_DIR}"' --sub_task '"${SUB_TASK}"' --pdb_post_mortem --num_envs='"${NUM_ENVS}"' --env_batch_size='"${ENV_BATCH_SIZE}"''
 echo $COMMAND
+mkdir "/outdata/logs/seed_rl/${ENVIRONMENT}_${AGENT}"
+mkdir "/outdata/logs/seed_rl/${ENVIRONMENT}_${AGENT}/${SUB_TASK}"
+mkdir "${LOG_DIR}"
 tmux send-keys -t "learner" "$COMMAND" ENTER
 
 for ((id=0; id<$NUM_ACTORS; id++)); do
