@@ -120,7 +120,7 @@ def main(argv):
   print(FLAGS.sub_task)
   print('subtask names')
   print(FLAGS.task_names)
-  with open(FLAGS.logdir + '/' + '0_0_summary.json', 'w') as file:
+  with open(FLAGS.logdir + '/' + '0_0_readme.json', 'w') as file:
     file.write('pos')
   FLAGS.reward_threshold = env.games[FLAGS.sub_task][2]
   if FLAGS.run_mode == 'actor':

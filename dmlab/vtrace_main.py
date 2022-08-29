@@ -47,7 +47,7 @@ flags.DEFINE_bool('extra_input', False, 'with or without the string input')
 # Training.
 flags.DEFINE_integer('save_checkpoint_secs', 900,
                      'Checkpoint save period in seconds.')
-flags.DEFINE_integer('total_environment_frames', int(5e9),
+flags.DEFINE_integer('total_environment_frames', int(1e10),
                      'Total environment frames to train for.')
 flags.DEFINE_integer('batch_size', 32, 'Batch size for training.')
 flags.DEFINE_integer('inference_batch_size', -1,
@@ -55,7 +55,7 @@ flags.DEFINE_integer('inference_batch_size', -1,
 flags.DEFINE_integer('unroll_length', 100, 'Unroll length in agent steps.')
 flags.DEFINE_integer('num_training_tpus', 1, 'Number of TPUs for training.')
 flags.DEFINE_string('init_checkpoint', None, 'Path to the checkpoint used to initialize the agent.')
-# flags.DEFINE_string('init_checkpoint', '../dmlab_ckpt/lt/ckpt-81', 'Path to the checkpoint used to initialize the agent.')
+# flags.DEFINE_string('init_checkpoint', '../dmlab_ckpt/lt/ckpt-342', 'Path to the checkpoint used to initialize the agent.')
 
 # Loss settings.
 flags.DEFINE_float('entropy_cost', 0.0033391318945337044, 'Entropy cost/multiplier.')

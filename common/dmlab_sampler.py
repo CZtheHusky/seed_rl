@@ -92,6 +92,8 @@ def actor_loop(create_env_fn, config=None, log_period=30):
     config = FLAGS
   max_ep_reward = -1e9
   min_ep_reward = 1e9
+  max_ep_length = -1e9
+  min_ep_length = 1e9
   save_idx = 0
   total_transitions = 0
   cur_trans_num = 0
@@ -184,6 +186,8 @@ def actor_loop(create_env_fn, config=None, log_period=30):
             avg_ep_reward += episode_raw_return[i]
             min_ep_reward = min(min_ep_reward, episode_raw_return[i])
             max_ep_reward = max(max_ep_reward, episode_raw_return[i])
+            min_ep_length = min(min_ep_length, episode_step[i])
+            max_ep_length = max(max_ep_length, episode_step[i])
             append_data(data2save, obsBuffer[i], actionsBuffer[i], rewardBuffer[i], infosBuffer[i], terminalBuffer[i])
             print(f'pid: {pid} adding data, episode transitions: {episode_step[i]}, episode reward: {episode_raw_return[i]}, episodes: {total_eps}, avg ep rew: {avg_ep_reward / total_eps}')
             if cur_trans_num >= FLAGS.save_interval or total_eps >= FLAGS.traj_num:
@@ -247,7 +251,9 @@ def actor_loop(create_env_fn, config=None, log_period=30):
       'Average_episode_trans': float(total_transitions / total_eps),
       'Min_ep_reward': float(min_ep_reward),
       'Max_ep_reward': float(max_ep_reward),
+      'Min_ep_length': int(min_ep_length),
+      'Max_ep_length': int(max_ep_length),
   }
   res_json = json.dumps(res)
-  with open(FLAGS.logdir + '/' + str(actor_idx) + '_summary.json', 'w') as file:
+  with open(FLAGS.logdir + '/' + str(actor_idx) + '_readme.json', 'w') as file:
     file.write(res_json)
