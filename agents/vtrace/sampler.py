@@ -168,9 +168,9 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
     with tf.device(host):
       server = grpc.Server([FLAGS.server_address])
 
-      store = utils.UnrollStore(
-          FLAGS.num_envs, FLAGS.unroll_length,
-          (action_specs, env_output_specs, agent_output_specs))
+      # store = utils.UnrollStore(
+      #     FLAGS.num_envs, FLAGS.unroll_length,
+      #     (action_specs, env_output_specs, agent_output_specs))
       env_run_ids = utils.Aggregator(FLAGS.num_envs,
                                      tf.TensorSpec([], tf.int64, 'run_ids'))
       env_infos = utils.Aggregator(FLAGS.num_envs, info_specs,
@@ -208,7 +208,7 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
           if tf.not_equal(tf.shape(envs_needing_reset)[0], 0):
             tf.print('Environment ids needing reset:', envs_needing_reset)
           env_infos.reset(envs_needing_reset)
-          store.reset(envs_needing_reset)
+          # store.reset(envs_needing_reset)
           initial_agent_states = agent.initial_state(
               tf.shape(envs_needing_reset)[0])
           first_agent_states.replace(envs_needing_reset, initial_agent_states)
@@ -245,11 +245,11 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
           # Append the latest outputs to the unroll and insert completed unrolls
           # in queue.
-          completed_ids, unrolls = store.append(
-              env_ids, (prev_actions, env_outputs, agent_outputs))
+          # completed_ids, unrolls = store.append(
+          #     env_ids, (prev_actions, env_outputs, agent_outputs))
           # unroll_queue.enqueue_many(unrolls)
-          first_agent_states.replace(completed_ids,
-                                     agent_states.read(completed_ids))
+          # first_agent_states.replace(completed_ids,
+          #                            agent_states.read(completed_ids))
 
           # Update current state.
           agent_states.replace(env_ids, curr_agent_states)

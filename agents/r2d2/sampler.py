@@ -611,10 +611,10 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
 
   # Buffer of incomplete unrolls. Filled during inference with new transitions.
   # This only contains data from training environments.
-  store = utils.UnrollStore(
-      get_num_training_envs(), FLAGS.unroll_length,
-      (action_specs, env_output_specs, agent_output_specs),
-      num_overlapping_steps=FLAGS.burn_in)
+  # store = utils.UnrollStore(
+  #     get_num_training_envs(), FLAGS.unroll_length,
+  #     (action_specs, env_output_specs, agent_output_specs),
+  #     num_overlapping_steps=FLAGS.burn_in)
   env_run_ids = utils.Aggregator(FLAGS.num_envs,
                                  tf.TensorSpec([], tf.int64, 'run_ids'))
   info_specs = (
@@ -691,9 +691,9 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
     if tf.not_equal(tf.shape(envs_needing_reset)[0], 0):
       tf.print('Environments needing reset:', envs_needing_reset)
     env_infos.reset(envs_needing_reset)
-    store.reset(tf.gather(
-        envs_needing_reset,
-        tf.where(is_training_env(envs_needing_reset))[:, 0]))
+    # store.reset(tf.gather(
+    #     envs_needing_reset,
+    #     tf.where(is_training_env(envs_needing_reset))[:, 0]))
     initial_agent_states = agent.initial_state(
         tf.shape(envs_needing_reset)[0])
     first_agent_states.replace(envs_needing_reset, initial_agent_states)
@@ -745,16 +745,16 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
     # training environments (IDs < num_training_envs), and insert completed
     # unrolls in queue.
     # <int64>[num_training_envs]
-    training_indices = tf.where(is_training_env(env_ids))[:, 0]
-    training_env_ids = tf.gather(env_ids, training_indices)
-    training_prev_actions, training_env_outputs, training_agent_outputs = (
-        tf.nest.map_structure(lambda s: tf.gather(s, training_indices),
-                              (prev_actions, env_outputs, agent_outputs)))
+    # training_indices = tf.where(is_training_env(env_ids))[:, 0]
+    # training_env_ids = tf.gather(env_ids, training_indices)
+    # training_prev_actions, training_env_outputs, training_agent_outputs = (
+    #     tf.nest.map_structure(lambda s: tf.gather(s, training_indices),
+    #                           (prev_actions, env_outputs, agent_outputs)))
 
-    append_to_store = (
-        training_prev_actions, training_env_outputs, training_agent_outputs)
-    completed_ids, completed_unrolls = store.append(
-        training_env_ids, append_to_store)
+    # append_to_store = (
+    #     training_prev_actions, training_env_outputs, training_agent_outputs)
+    # completed_ids, completed_unrolls = store.append(
+    #     training_env_ids, append_to_store)
     # _, unrolled_env_outputs, unrolled_agent_outputs = completed_unrolls
     # unrolled_agent_states = first_agent_states.read(completed_ids)
 
@@ -777,8 +777,8 @@ def learner_loop(create_env_fn, create_agent_fn, create_optimizer_fn):
     # unrolls = Unroll(unrolled_agent_states, initial_priorities,
     #                  *completed_unrolls)
     # unroll_queue.enqueue_many(unrolls)
-    first_agent_states.replace(completed_ids,
-                               agent_states.read(completed_ids))
+    # first_agent_states.replace(completed_ids,
+    #                            agent_states.read(completed_ids))
 
     # Update current state.
     agent_states.replace(env_ids, curr_agent_states)
